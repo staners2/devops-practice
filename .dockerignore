@@ -1,0 +1,9 @@
+.git
+.gitignore
+.env
+.superpowers
+.idea
+.vscode
+bin
+coverage
+*.log

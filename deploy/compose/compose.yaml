@@ -1,0 +1,159 @@
+name: devops-practice
+
+x-application-environment: &application-environment
+  DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+  REDIS_ADDR: redis:6379
+  REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+  REDIS_DB: ${REDIS_DB:-0}
+  KAFKA_BROKERS: kafka:9092
+  KAFKA_TOPIC: ${KAFKA_TOPIC:-requests.created.v1}
+  KAFKA_GROUP: ${KAFKA_GROUP:-request-worker-v1}
+  CACHE_TTL: ${CACHE_TTL:-30s}
+  REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-2s}
+  SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-10s}
+
+x-application-security: &application-security
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
+services:
+  postgres:
+    image: postgres:18.1-alpine@sha256:aa6eb304ddb6dd26df23d05db4e5cb05af8951cda3e0dc57731b771e0ef4ab29
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 512m
+
+  redis:
+    image: redis:8.4-alpine@sha256:0514fa59e3d84e2f3be66731c5401fc2a85b8ea71b49c0116c850f6a558076f4
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    mem_limit: 128m
+
+  kafka:
+    image: apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    mem_limit: 1024m
+
+  kafka-init:
+    image: apache/kafka:4.1.1@sha256:0bc1bb2478f45b6cea78864df86acdc11e8df2c5172477819a4d12942cbe5d40
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - >-
+        /opt/kafka/bin/kafka-topics.sh
+        --bootstrap-server kafka:9092
+        --create --if-not-exists
+        --topic "$${KAFKA_TOPIC}"
+        --partitions 1
+        --replication-factor 1
+    environment:
+      KAFKA_TOPIC: ${KAFKA_TOPIC:-requests.created.v1}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    mem_limit: 128m
+
+  api:
+    <<: *application-security
+    image: devops-practice:module-00
+    build:
+      context: ../..
+    entrypoint: ["/usr/local/bin/api"]
+    environment:
+      <<: *application-environment
+      HTTP_ADDR: ${HTTP_ADDR:-:8080}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    ports:
+      - "${API_PORT:-8080}:8080"
+    mem_limit: 128m
+
+  worker:
+    <<: *application-security
+    image: devops-practice:module-00
+    entrypoint: ["/usr/local/bin/worker"]
+    environment:
+      <<: *application-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    mem_limit: 128m
+
+  migrate:
+    <<: *application-security
+    profiles: ["tools"]
+    image: devops-practice:module-00
+    entrypoint: ["/usr/local/bin/migrate"]
+    environment:
+      <<: *application-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 128m
+
+  smoke:
+    <<: *application-security
+    profiles: ["tools"]
+    image: devops-practice:module-00
+    entrypoint: ["/usr/local/bin/smoke"]
+    environment:
+      <<: *application-environment
+      API_BASE_URL: http://api:8080
+    depends_on:
+      api:
+        condition: service_started
+      worker:
+        condition: service_started
+    mem_limit: 128m
+
+volumes:
+  postgres-data:
+  kafka-data:

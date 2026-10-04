@@ -1,0 +1,8 @@
+.env
+.DS_Store
+.idea/
+.vscode/
+.superpowers/
+bin/
+coverage/
+*.log
