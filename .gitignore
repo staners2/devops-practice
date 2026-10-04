@@ -1,4 +1,6 @@
 .env
+deploy/runner/.env
+deploy/runner/config/
 .DS_Store
 .idea/
 .vscode/
