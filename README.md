@@ -101,6 +101,7 @@ curl -sS -X POST http://localhost:8080/api/requests \
 
 - [Модуль 00: запустить приложение](docs/modules/00-start.md)
 - [Модуль 01: организовать безопасную поставку через GitLab](docs/modules/01-gitlab-ci.md)
+- [Модуль 02: развернуть приложение в Kubernetes](docs/modules/02-kubernetes-helm.md)
 
 Вспомогательный компонент Telegram-уведомлений описан в
 [документации notifier](docs/notifier.md).
