@@ -4,6 +4,7 @@ deploy/runner/.env
 .idea/
 .vscode/
 .superpowers/
+.worktrees/
 bin/
 coverage/
 coverage.out
