@@ -1,6 +1,7 @@
 COMPOSE = docker compose --env-file .env -f deploy/compose/compose.yaml
+RUNNER_COMPOSE = docker compose --env-file deploy/runner/.env -f deploy/runner/compose.yaml
 
-.PHONY: up down migrate smoke logs ps config build
+.PHONY: up down migrate smoke logs ps config build format-check vet test compose-check ci-local runner-up runner-register runner-status runner-logs notifier-logs runner-down
 
 up: build
 	$(COMPOSE) up -d
@@ -32,3 +33,37 @@ config:
 
 build:
 	docker build -t devops-practice:module-00 .
+
+format-check:
+	test -z "$$(gofmt -l .)"
+
+vet:
+	go vet ./...
+
+test:
+	go test -race -cover ./...
+
+compose-check:
+	docker compose --env-file .env.example -f deploy/compose/compose.yaml config --quiet
+	TELEGRAM_BOT_TOKEN=ci-validation TELEGRAM_CHAT_ID=ci-validation docker compose --env-file deploy/runner/.env.example -f deploy/runner/compose.yaml config --quiet
+
+ci-local: format-check vet test compose-check
+
+runner-up:
+	$(RUNNER_COMPOSE) up -d --build
+
+runner-register:
+	./scripts/runner/register.sh
+
+runner-status:
+	$(RUNNER_COMPOSE) ps
+	$(RUNNER_COMPOSE) exec -T runner gitlab-runner verify
+
+runner-logs:
+	$(RUNNER_COMPOSE) logs -f runner
+
+notifier-logs:
+	$(RUNNER_COMPOSE) logs -f notifier
+
+runner-down:
+	$(RUNNER_COMPOSE) down

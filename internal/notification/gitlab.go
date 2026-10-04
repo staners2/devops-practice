@@ -268,7 +268,7 @@ func (g *GitLabSource) getWithHeaders(ctx context.Context, path string, query ur
 	if err != nil {
 		return nil, 0, nil, errors.New("send GitLab request")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, gitLabBodyLimit+1))
 	if err != nil {
 		return nil, 0, nil, errors.New("read GitLab response")

@@ -243,7 +243,7 @@ func (s *smoke) doJSON(ctx context.Context, method, path string, body any, wantS
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	raw, err := io.ReadAll(io.LimitReader(response.Body, 64*1024))
 	if err != nil {
 		return err

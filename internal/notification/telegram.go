@@ -49,7 +49,7 @@ func (t *TelegramSender) Send(ctx context.Context, message string) error {
 	if err != nil {
 		return errors.New("telegram send failed")
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 	body, err := io.ReadAll(io.LimitReader(response.Body, telegramResponseLimit+1))
 	if err != nil || len(body) > telegramResponseLimit {
 		return errors.New("telegram send failed")

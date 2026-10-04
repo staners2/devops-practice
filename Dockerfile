@@ -1,19 +1,31 @@
+# syntax=docker/dockerfile:1.27.0
+
+ARG VCS_REF=unknown
+ARG SOURCE_URL=unknown
+
 FROM golang:1.26.4-alpine@sha256:3ad57304ad93bbec8548a0437ad9e06a455660655d9af011d58b993f6f615648 AS build
 
-RUN apk add --no-cache ca-certificates
 WORKDIR /src
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/smoke ./cmd/smoke \
     && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/notifier ./cmd/notifier
 
 FROM scratch AS notifier
+
+ARG VCS_REF
+ARG SOURCE_URL
+LABEL org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.source=$SOURCE_URL
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/notifier /usr/local/bin/notifier
@@ -22,6 +34,11 @@ USER 10001:10001
 ENTRYPOINT ["/usr/local/bin/notifier"]
 
 FROM scratch AS runtime
+
+ARG VCS_REF
+ARG SOURCE_URL
+LABEL org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.source=$SOURCE_URL
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /out/api /usr/local/bin/api

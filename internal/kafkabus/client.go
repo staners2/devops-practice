@@ -62,7 +62,7 @@ func NewConsumer(brokers []string, topic, group string) (*Consumer, error) {
 		return nil, errors.New("at least one Kafka broker is required")
 	}
 	if topic == "" || group == "" {
-		return nil, errors.New("Kafka topic and group are required")
+		return nil, errors.New("kafka topic and group are required")
 	}
 	client, err := kgo.NewClient(
 		kgo.SeedBrokers(brokers...),
@@ -90,7 +90,7 @@ func (c *Consumer) Poll(ctx context.Context) (*kgo.Record, error) {
 	})
 	record := c.popPending()
 	if record == nil {
-		return nil, errors.New("Kafka poll returned no record")
+		return nil, errors.New("kafka poll returned no record")
 	}
 	return record, nil
 }
