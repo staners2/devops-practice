@@ -1,0 +1,57 @@
+---
+- name: Скопировать базовый Compose
+  ansible.builtin.copy:
+    src: "{{ lab_repo_root }}/deploy/compose/compose.yaml"
+    dest: "{{ application_dir }}/compose.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  register: application_compose
+
+- name: Скопировать VM override
+  ansible.builtin.copy:
+    src: "{{ lab_repo_root }}/deploy/ansible-lab/compose.vm.yaml"
+    dest: "{{ application_dir }}/compose.vm.yaml"
+    owner: root
+    group: root
+    mode: '0644'
+  register: application_override
+
+- name: Скопировать проверку сквозного потока
+  ansible.builtin.copy:
+    src: "{{ lab_repo_root }}/scripts/ansible-lab/verify.sh"
+    dest: "{{ application_dir }}/verify.sh"
+    owner: root
+    group: root
+    mode: '0750'
+  register: application_verify
+
+- name: Скопировать bootstrap для systemd
+  ansible.builtin.copy:
+    src: start.sh
+    dest: "{{ application_dir }}/start.sh"
+    owner: root
+    group: root
+    mode: '0750'
+  register: application_start
+
+- name: Записать закрытый environment
+  ansible.builtin.template:
+    src: environment.j2
+    dest: "{{ application_dir }}/.env"
+    owner: root
+    group: root
+    mode: '0600'
+  register: application_env
+  no_log: true
+  diff: false
+
+- name: Установить unit приложения
+  ansible.builtin.template:
+    src: application.service.j2
+    dest: /etc/systemd/system/devops-practice-ansible-07.service
+    owner: root
+    group: root
+    mode: '0644'
+  register: application_unit_file
+  notify: Перечитать systemd

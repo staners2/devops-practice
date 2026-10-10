@@ -1,0 +1,27 @@
+replicaCount: 3
+image:
+  repository: registry.gitlab.com/replace-with-your-namespace/devops-practice/patroni
+  # Замените пустое значение опубликованным CI_COMMIT_SHA перед установкой.
+  tag: ""
+  pullPolicy: IfNotPresent
+auth:
+  existingSecret: postgresql-patroni-auth
+storage:
+  className: local-path
+  size: 2Gi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+patroni:
+  ttl: 30
+  loopWait: 10
+  retryTimeout: 10
+  maximumLagOnFailover: 1048576
+networkPolicy:
+  # Только для локального стенда: CNI может проверять адрес до/после DNAT.
+  # После проверки подставьте реальные CIDR Kubernetes API и его backend.
+  apiServerCIDRs: [0.0.0.0/0]

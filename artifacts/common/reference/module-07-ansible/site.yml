@@ -1,0 +1,43 @@
+---
+- name: Подготовить системные зависимости
+  hosts: all
+  become: true
+  vars: &lab_vars
+    lab_repo_root: "{{ playbook_dir }}/../.."
+    lab_versions: "{{ dict(lookup('ansible.builtin.file', lab_repo_root + '/deploy/ansible-lab/versions.env').splitlines() | map('split', '=')) }}"
+  pre_tasks:
+    - name: Проверить поддерживаемую ОС
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_version'] == '24.04'
+          - ansible_facts['architecture'] in ['x86_64', 'aarch64']
+        fail_msg: Референс предназначен для Ubuntu 24.04 amd64/arm64.
+      tags: always
+  roles:
+    - role: base
+      tags: base
+
+- name: Установить Docker на сервер приложения
+  hosts: app
+  become: true
+  vars: *lab_vars
+  roles:
+    - role: docker
+      tags: docker
+
+- name: Настроить входной Nginx
+  hosts: proxy
+  become: true
+  vars: *lab_vars
+  roles:
+    - role: nginx
+      tags: nginx
+
+- name: Применить и проверить приложение
+  hosts: app
+  become: true
+  vars: *lab_vars
+  roles:
+    - role: application
+      tags: application

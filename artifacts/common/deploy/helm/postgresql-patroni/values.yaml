@@ -1,0 +1,28 @@
+replicaCount: 3
+image:
+  repository: registry.gitlab.com/replace-with-your-namespace/devops-practice/patroni
+  # Укажите опубликованный CI_COMMIT_SHA; пустой tag не допускает установку.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+auth:
+  existingSecret: postgresql-patroni-auth
+storage:
+  className: local-path
+  size: 2Gi
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+patroni:
+  ttl: 30
+  loopWait: 10
+  retryTimeout: 10
+  maximumLagOnFailover: 1048576
+networkPolicy:
+  # Учебный компромисс: DNAT API Service зависит от CNI. Ограничьте реальными
+  # Service/backend IP после проверки; не используйте 0.0.0.0/0 в production.
+  apiServerCIDRs: [0.0.0.0/0]

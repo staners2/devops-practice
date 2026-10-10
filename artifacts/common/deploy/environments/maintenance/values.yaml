@@ -1,0 +1,8 @@
+api:
+  replicas: 0
+worker:
+  replicas: 0
+smoke:
+  enabled: false
+migration:
+  enabled: false

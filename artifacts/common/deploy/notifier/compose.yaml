@@ -1,0 +1,26 @@
+services:
+  notifier:
+    build:
+      context: ../..
+      target: notifier
+    restart: unless-stopped
+    init: true
+    read_only: true
+    mem_limit: 64m
+    environment:
+      GITLAB_API_URL: ${GITLAB_API_URL:-https://gitlab.com/api/v4}
+      GITLAB_PROJECT_ID: ${GITLAB_PROJECT_ID:?set GITLAB_PROJECT_ID}
+      GITLAB_READ_TOKEN: ${GITLAB_READ_TOKEN:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:?set TELEGRAM_CHAT_ID}
+      NOTIFIER_POLL_INTERVAL: ${NOTIFIER_POLL_INTERVAL:-15s}
+      NOTIFIER_STATE_PATH: /var/lib/notifier/state.json
+    volumes:
+      - notifier-state:/var/lib/notifier
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  notifier-state:
+    external: true
+    name: devops-practice-notifier-state

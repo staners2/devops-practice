@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-api
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "devops-practice.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

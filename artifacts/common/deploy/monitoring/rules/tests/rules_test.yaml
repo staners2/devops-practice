@@ -1,0 +1,523 @@
+rule_files:
+  - ../recording.yaml
+  - ../alerts.yaml
+evaluation_interval: 1m
+group_eval_order:
+  - devops-practice-recording
+  - devops-practice-alerts
+tests:
+  - name: ApplicationTargetDown-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",pod="api-0",instance="api-0:9090"}'
+        values: '1 0x20'
+      - series: 'up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker",pod="worker-0",instance="worker-0:9090"}'
+        values: '1x21'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: ApplicationTargetDown
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: ApplicationTargetDown
+        exp_alerts: []
+      - eval_time: 3m
+        groupname: devops-practice-alerts
+        alertname: ApplicationTargetDown
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'api'
+              pod: 'api-0'
+              instance: 'api-0:9090'
+              severity: 'critical'
+            exp_annotations:
+              summary: 'Приложение недоступно для сбора метрик'
+              description: 'Target api не отвечает или отсутствует в discovery более 2 минут. Проверьте pod, metrics listener и vmagent.'
+              dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#applicationtargetdown'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="ApplicationTargetDown",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: '(up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component=~"api|worker"} == 0) or absent(up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}) or absent(up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"})'
+        eval_time: 0m
+        exp_samples: []
+  - name: DependencyUnavailable-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_dependency_up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",dependency="redis"}'
+        values: '1 0x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: DependencyUnavailable
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: DependencyUnavailable
+        exp_alerts: []
+      - eval_time: 2m
+        groupname: devops-practice-alerts
+        alertname: DependencyUnavailable
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'api'
+              dependency: 'redis'
+              severity: 'critical'
+            exp_annotations:
+              summary: 'Зависимость приложения недоступна'
+              description: 'api не может использовать redis более 1 минуты. Проверьте readiness, логи и состояние зависимости.'
+              dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#dependencyunavailable'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="DependencyUnavailable",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'min by (cluster, namespace, service, component, dependency) (devops_practice_dependency_up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component=~"api|worker"}) == 0'
+        eval_time: 0m
+        exp_samples: []
+  - name: APIHighErrorRate-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="200"}'
+        values: '0+90x20'
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="503"}'
+        values: '0+10x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: APIHighErrorRate
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: APIHighErrorRate
+        exp_alerts: []
+      - eval_time: 6m
+        groupname: devops-practice-alerts
+        alertname: APIHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'api'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Высокая доля ошибок API'
+              description: 'Доля 5xx на /api/* превышает 5% более 5 минут при ненулевом трафике. Сопоставьте RED-сигналы с dependency health и логами.'
+              dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#apihigherrorrate'
+    metricsql_expr_test:
+      - expr: devops_practice:http_error_ratio5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_error_ratio5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.1
+      - expr: devops_practice:http_availability_ratio5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_availability_ratio5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.9
+      - expr: 'count(ALERTS{alertname="APIHighErrorRate",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'devops_practice:http_error_ratio5m > 0.05 and on (cluster, namespace, service, component) devops_practice:http_request_rate5m > 0'
+        eval_time: 0m
+        exp_samples: []
+  - name: APIHighLatency-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="200"}'
+        values: '0+100x20'
+      - series: 'devops_practice_http_request_duration_seconds_count{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests"}'
+        values: '0+100x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="0.1"}'
+        values: '0+0x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="0.5"}'
+        values: '0+80x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="1"}'
+        values: '0+100x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="+Inf"}'
+        values: '0+100x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: APIHighLatency
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: APIHighLatency
+        exp_alerts: []
+      - eval_time: 6m
+        groupname: devops-practice-alerts
+        alertname: APIHighLatency
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'api'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Высокая задержка API'
+              description: 'p95 запросов /api/* превышает 500 ms более 5 минут при ненулевом трафике. Проверьте зависимости и ресурсы API.'
+              dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#apihighlatency'
+    metricsql_expr_test:
+      - expr: devops_practice:http_latency_ratio5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_ratio5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.8
+      - expr: devops_practice:http_latency_p50_seconds5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_p50_seconds5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.35
+      - expr: devops_practice:http_latency_p95_seconds5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_p95_seconds5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.875
+      - expr: devops_practice:http_latency_p99_seconds5m
+        eval_time: 6m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_p99_seconds5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 0.975
+      - expr: 'count(ALERTS{alertname="APIHighLatency",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'devops_practice:http_latency_p95_seconds5m > 0.5 and on (cluster, namespace, service, component) devops_practice:http_request_rate5m > 0'
+        eval_time: 0m
+        exp_samples: []
+  - name: WorkerStalled-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",result="success"}'
+        values: '0+10x20'
+      - series: 'devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}'
+        values: '946684800x21'
+    alert_rule_test:
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+      - eval_time: 3m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+      - eval_time: 5m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'worker'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Worker не обрабатывает опубликованные события'
+              description: 'API публикует события, но worker не был успешен последние 2 минуты либо ещё не обработал ни одного события. Условие сохраняется более 2 минут; проверьте rollout и Kafka/Redis.'
+              dashboard_url: 'http://localhost:3000/d/incident-drilldown?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#workerstalled'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="WorkerStalled",alertstate="pending"})'
+        eval_time: 3m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: '(devops_practice:worker_freshness_seconds > 120 and on (cluster, namespace, service) devops_practice:events_published_rate5m{result="success"} > 0) or ((sum by (cluster, namespace, service) (devops_practice:events_published_rate5m{result="success"}) > 0) unless on (cluster, namespace, service) (max by (cluster, namespace, service) (devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}) > 0))'
+        eval_time: 1m
+        exp_samples: []
+  - name: DeploymentReplicasMismatch-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{cluster="devops-practice",namespace="devops-practice",deployment="devops-practice-worker"}'
+        values: '1x21'
+      - series: 'kube_deployment_status_replicas_available{cluster="devops-practice",namespace="devops-practice",deployment="devops-practice-worker"}'
+        values: '1 0x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: DeploymentReplicasMismatch
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: DeploymentReplicasMismatch
+        exp_alerts: []
+      - eval_time: 4m
+        groupname: devops-practice-alerts
+        alertname: DeploymentReplicasMismatch
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              deployment: 'devops-practice-worker'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Deployment не достиг желаемого числа replicas'
+              description: 'В devops-practice-worker available replicas меньше desired более 3 минут. Проверьте pod events и изменение в Argo CD.'
+              dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#deploymentreplicasmismatch'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="DeploymentReplicasMismatch",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'max by (cluster, namespace, deployment) (kube_deployment_status_replicas_available{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"}) < max by (cluster, namespace, deployment) (kube_deployment_spec_replicas{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"})'
+        eval_time: 0m
+        exp_samples: []
+  - name: PodRestartingTooOften-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'kube_pod_container_status_restarts_total{cluster="devops-practice",namespace="devops-practice",pod="worker-0",container="worker"}'
+        values: '0 3x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: PodRestartingTooOften
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: PodRestartingTooOften
+        exp_alerts: []
+      - eval_time: 6m
+        groupname: devops-practice-alerts
+        alertname: PodRestartingTooOften
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              pod: 'worker-0'
+              container: 'worker'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Контейнер приложения часто перезапускается'
+              description: 'worker-0/worker перезапустился не менее 3 раз за 10 минут; условие сохраняется более 5 минут. Проверьте previous logs и termination reason.'
+              dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#podrestartingtoooften'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="PodRestartingTooOften",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'sum by (cluster, namespace, pod, container) (increase(kube_pod_container_status_restarts_total{cluster="devops-practice",namespace="devops-practice",container=~"api|worker"}[10m])) >= 3'
+        eval_time: 0m
+        exp_samples: []
+  - name: VictoriaMetricsStorageLow-inactive-pending-firing
+    interval: 1m
+    input_series:
+      - series: 'vm_free_disk_space_bytes{cluster="devops-practice",namespace="monitoring",service="victoriametrics"}'
+        values: '1073741824 268435456x20'
+    alert_rule_test:
+      - eval_time: 0m
+        groupname: devops-practice-alerts
+        alertname: VictoriaMetricsStorageLow
+        exp_alerts: []
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: VictoriaMetricsStorageLow
+        exp_alerts: []
+      - eval_time: 6m
+        groupname: devops-practice-alerts
+        alertname: VictoriaMetricsStorageLow
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'monitoring'
+              service: 'victoriametrics'
+              severity: 'critical'
+            exp_annotations:
+              summary: 'VictoriaMetrics: мало свободного места'
+              description: 'На filesystem хранилища VictoriaMetrics доступно менее 512 MiB более 5 минут. Проверьте PVC/node, retention и скорость поступления метрик.'
+              dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace=monitoring'
+              runbook_url: 'docs/runbooks/observability.md#victoriametricsstoragelow'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="VictoriaMetricsStorageLow",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+      - expr: 'min by (cluster, namespace, service) (vm_free_disk_space_bytes{cluster="devops-practice",namespace="monitoring",service="victoriametrics"}) < 536870912'
+        eval_time: 0m
+        exp_samples: []
+  - name: healthy-SLI-and-idle-worker
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="200"}'
+        values: '0+100x40'
+      - series: 'devops_practice_http_request_duration_seconds_count{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests"}'
+        values: '0+100x40'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="0.5"}'
+        values: '0+100x40'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="+Inf"}'
+        values: '0+100x40'
+      - series: 'devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",result="success"}'
+        values: '0x40'
+      - series: 'devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}'
+        values: '0x40'
+    alert_rule_test:
+      - eval_time: 30m
+        groupname: devops-practice-alerts
+        alertname: APIHighErrorRate
+        exp_alerts: []
+      - eval_time: 30m
+        groupname: devops-practice-alerts
+        alertname: APIHighLatency
+        exp_alerts: []
+      - eval_time: 30m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+    metricsql_expr_test:
+      - expr: devops_practice:http_availability_ratio5m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'devops_practice:http_availability_ratio5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 1
+      - expr: devops_practice:http_latency_ratio5m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_ratio5m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 1
+      - expr: devops_practice:http_availability_ratio30m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'devops_practice:http_availability_ratio30m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 1
+      - expr: devops_practice:http_latency_ratio30m
+        eval_time: 30m
+        exp_samples:
+          - labels: 'devops_practice:http_latency_ratio30m{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+            value: 1
+  - name: zero-traffic-does-not-alert
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="200"}'
+        values: '0x20'
+      - series: 'devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",status_code="503"}'
+        values: '0x20'
+      - series: 'devops_practice_http_request_duration_seconds_count{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests"}'
+        values: '0x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="0.5"}'
+        values: '0x20'
+      - series: 'devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",method="GET",route="/api/requests",le="+Inf"}'
+        values: '0x20'
+      - series: 'devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",result="success"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 15m
+        groupname: devops-practice-alerts
+        alertname: APIHighErrorRate
+        exp_alerts: []
+      - eval_time: 15m
+        groupname: devops-practice-alerts
+        alertname: APIHighLatency
+        exp_alerts: []
+      - eval_time: 15m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+  - name: worker-target-missing-from-discovery
+    interval: 1m
+    input_series:
+      - series: 'up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: ApplicationTargetDown
+        exp_alerts: []
+      - eval_time: 2m
+        groupname: devops-practice-alerts
+        alertname: ApplicationTargetDown
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'worker'
+              severity: 'critical'
+            exp_annotations:
+              summary: 'Приложение недоступно для сбора метрик'
+              description: 'Target worker не отвечает или отсутствует в discovery более 2 минут. Проверьте pod, metrics listener и vmagent.'
+              dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#applicationtargetdown'
+    metricsql_expr_test:
+      - expr: 'count(ALERTS{alertname="ApplicationTargetDown",alertstate="pending"})'
+        eval_time: 1m
+        exp_samples:
+          - labels: '{}'
+            value: 1
+  - name: worker-never-succeeded-with-publication
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",result="success"}'
+        values: '0+10x10'
+      - series: 'devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}'
+        values: '0x10'
+    alert_rule_test:
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+      - eval_time: 3m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'worker'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Worker не обрабатывает опубликованные события'
+              description: 'API публикует события, но worker не был успешен последние 2 минуты либо ещё не обработал ни одного события. Условие сохраняется более 2 минут; проверьте rollout и Kafka/Redis.'
+              dashboard_url: 'http://localhost:3000/d/incident-drilldown?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#workerstalled'
+  - name: worker-missing-metrics-with-publication
+    interval: 1m
+    input_series:
+      - series: 'devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",result="success"}'
+        values: '0+10x10'
+    alert_rule_test:
+      - eval_time: 1m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts: []
+      - eval_time: 3m
+        groupname: devops-practice-alerts
+        alertname: WorkerStalled
+        exp_alerts:
+          - exp_labels:
+              cluster: 'devops-practice'
+              namespace: 'devops-practice'
+              service: 'devops-practice'
+              component: 'worker'
+              severity: 'warning'
+            exp_annotations:
+              summary: 'Worker не обрабатывает опубликованные события'
+              description: 'API публикует события, но worker не был успешен последние 2 минуты либо ещё не обработал ни одного события. Условие сохраняется более 2 минут; проверьте rollout и Kafka/Redis.'
+              dashboard_url: 'http://localhost:3000/d/incident-drilldown?var-namespace=devops-practice'
+              runbook_url: 'docs/runbooks/observability.md#workerstalled'

@@ -1,0 +1,31 @@
+---
+- name: Установить Nginx
+  ansible.builtin.apt:
+    name: nginx
+    state: present
+
+- name: Проверить параметры reverse proxy
+  ansible.builtin.assert:
+    that:
+      - nginx_upstream_ip is match('^[0-9.]+$')
+      - nginx_response_label is match('^[a-zA-Z0-9_-]+$')
+    fail_msg: Укажите IPv4 upstream и безопасную метку ответа.
+
+- name: Проверить и установить полный конфиг Nginx
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/nginx.conf
+    owner: root
+    group: root
+    mode: '0644'
+    validate: /usr/sbin/nginx -t -c %s
+  notify: Перечитать Nginx
+
+- name: Включить и запустить Nginx
+  ansible.builtin.systemd_service:
+    name: nginx
+    enabled: true
+    state: started
+
+- name: Применить изменение до проверки приложения
+  ansible.builtin.meta: flush_handlers

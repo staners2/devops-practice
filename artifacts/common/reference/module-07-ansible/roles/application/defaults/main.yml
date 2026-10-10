@@ -1,0 +1,14 @@
+---
+application_snapshot_files:
+  - name: compose.yaml
+    path: "{{ application_dir }}/compose.yaml"
+  - name: compose.vm.yaml
+    path: "{{ application_dir }}/compose.vm.yaml"
+  - name: start.sh
+    path: "{{ application_dir }}/start.sh"
+  - name: verify.sh
+    path: "{{ application_dir }}/verify.sh"
+  - name: unit.service
+    path: /etc/systemd/system/devops-practice-ansible-07.service
+  - name: .env
+    path: "{{ application_dir }}/.env"

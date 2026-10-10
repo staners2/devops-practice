@@ -1,0 +1,46 @@
+name: devops-practice-ansible-07
+
+services:
+  postgres:
+    restart: unless-stopped
+    volumes: !override
+      - postgres-data:/var/lib/postgresql
+
+  redis:
+    restart: unless-stopped
+
+  kafka:
+    restart: unless-stopped
+    environment:
+      KAFKA_LOG_DIRS: /var/lib/kafka/data/logs
+      KAFKA_HEAP_OPTS: -Xms384m -Xmx384m
+    healthcheck:
+      test: [CMD-SHELL, 'KAFKA_HEAP_OPTS="-Xms32m -Xmx64m" /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1']
+
+  kafka-init:
+    environment:
+      KAFKA_HEAP_OPTS: -Xms32m -Xmx64m
+    mem_limit: 256m
+
+  api:
+    image: ${APPLICATION_IMAGE:?APPLICATION_IMAGE is required}
+    build: !reset null
+    pull_policy: never
+    restart: unless-stopped
+    ports: !override
+      - "${API_BIND_IP:?API_BIND_IP is required}:8080:8080"
+
+  worker:
+    image: ${APPLICATION_IMAGE:?APPLICATION_IMAGE is required}
+    pull_policy: never
+    restart: unless-stopped
+
+  migrate:
+    image: ${TOOL_IMAGE:?TOOL_IMAGE is required}
+    pull_policy: never
+
+  smoke:
+    image: ${TOOL_IMAGE:?TOOL_IMAGE is required}
+    pull_policy: never
+    environment:
+      API_BASE_URL: ${PROXY_BASE_URL:?PROXY_BASE_URL is required}

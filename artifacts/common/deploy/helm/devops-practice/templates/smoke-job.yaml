@@ -1,0 +1,43 @@
+{{- if .Values.smoke.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-smoke
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+    app.kubernetes.io/component: smoke
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "devops-practice.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: smoke
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- include "devops-practice.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: smoke
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/usr/local/bin/smoke"]
+          securityContext:
+            {{- include "devops-practice.containerSecurityContext" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "devops-practice.fullname" . }}
+            - secretRef:
+                name: {{ .Values.runtimeSecretName }}
+          env:
+            - name: API_BASE_URL
+              value: http://{{ include "devops-practice.fullname" . }}-api:8080
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+{{- end }}

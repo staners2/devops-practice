@@ -1,0 +1,23 @@
+fullnameOverride: redis
+image:
+  registry: docker.io
+  repository: redis
+  tag: "8.10.2@sha256:d5ac52db24d4e70566fe9944f22cf5bdc2bc739b05c0f426335161ea6c23f3b3"
+architecture: standalone
+auth:
+  enabled: true
+  existingSecret: redis-auth
+  existingSecretPasswordKey: redis-password
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 1Gi
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+metrics:
+  enabled: false

@@ -1,0 +1,7 @@
+---
+application_dir: /opt/devops-practice-ansible-07
+application_image: devops-practice:lab-07-v1
+application_tool_image: devops-practice:lab-07-v1
+application_postgres_user: devops
+application_postgres_db: devops_practice
+application_proxy_url: "http://{{ hostvars[groups['proxy'][0]]['ansible_host'] }}"

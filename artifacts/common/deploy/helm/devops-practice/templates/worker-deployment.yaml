@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-worker
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  strategy:
+    type: {{ .Values.worker.strategy }}
+  selector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: /metrics
+      labels:
+        {{- include "devops-practice.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: worker
+    spec:
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        {{- include "devops-practice.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: {{ toJson .Values.worker.command }}
+          securityContext:
+            {{- include "devops-practice.containerSecurityContext" . | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "devops-practice.fullname" . }}
+            - secretRef:
+                name: {{ .Values.runtimeSecretName }}
+          ports:
+            - name: metrics
+              containerPort: 9090
+              protocol: TCP
+          readinessProbe:
+            httpGet: {path: /-/healthy, port: metrics}
+            periodSeconds: 5
+            timeoutSeconds: 2
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}

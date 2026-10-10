@@ -1,0 +1,767 @@
+{
+  "uid": "incident-drilldown",
+  "title": "Инцидент: метрики и логи",
+  "description": "RED recording rules агрегированы по компоненту; pod ограничивает логи и ресурсы. Выберите интервал инцидента и request_id из response header либо JSON log.",
+  "tags": [
+    "devops-practice",
+    "module-04"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(kube_namespace_status_phase{cluster=\"devops-practice\",service=\"kube-state-metrics\"}, namespace)",
+        "query": {
+          "query": "label_values(kube_namespace_status_phase{cluster=\"devops-practice\",service=\"kube-state-metrics\"}, namespace)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": false,
+        "includeAll": false,
+        "current": {
+          "selected": false,
+          "text": "devops-practice",
+          "value": "devops-practice"
+        },
+        "options": []
+      },
+      {
+        "name": "component",
+        "label": "Компонент",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(up{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\"}, component)",
+        "query": {
+          "query": "label_values(up{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\"}, component)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "pod",
+        "label": "Pod",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(up{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}, pod)",
+        "query": {
+          "query": "label_values(up{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}, pod)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "request_id",
+        "label": "Request ID (точное совпадение)",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "selected": false,
+          "text": "",
+          "value": ""
+        },
+        "options": [
+          {
+            "selected": true,
+            "text": "",
+            "value": ""
+          }
+        ]
+      }
+    ]
+  },
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployment: создание pod",
+        "enable": true,
+        "hide": false,
+        "iconColor": "#5794F2",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "target": {
+          "refId": "AnnoPod",
+          "expr": "(kube_pod_created{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",pod=~\"devops-practice-.*\"} >= ${__from:date:seconds}) and (kube_pod_created{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",pod=~\"devops-practice-.*\"} <= ${__to:date:seconds})",
+          "range": true,
+          "instant": false,
+          "format": "time_series",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        },
+        "expr": "(kube_pod_created{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",pod=~\"devops-practice-.*\"} >= ${__from:date:seconds}) and (kube_pod_created{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",pod=~\"devops-practice-.*\"} <= ${__to:date:seconds})",
+        "useValueForTime": true,
+        "titleFormat": "Создан {{pod}}",
+        "textFormat": "Namespace {{namespace}}; создание pod как маркер rollout",
+        "tagKeys": "namespace,pod"
+      },
+      {
+        "name": "Argo CD: изменение sync / health",
+        "enable": true,
+        "hide": false,
+        "iconColor": "#FF9830",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "target": {
+          "refId": "AnnoArgo",
+          "expr": "argocd_app_info{cluster=\"devops-practice\",namespace=\"argocd\",service=\"argocd\",name=\"devops-practice\"} unless argocd_app_info{cluster=\"devops-practice\",namespace=\"argocd\",service=\"argocd\",name=\"devops-practice\"} offset 1m",
+          "range": true,
+          "instant": false,
+          "format": "time_series",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          }
+        },
+        "expr": "argocd_app_info{cluster=\"devops-practice\",namespace=\"argocd\",service=\"argocd\",name=\"devops-practice\"} unless argocd_app_info{cluster=\"devops-practice\",namespace=\"argocd\",service=\"argocd\",name=\"devops-practice\"} offset 1m",
+        "titleFormat": "Argo CD: {{sync_status}} / {{health_status}}",
+        "textFormat": "{{name}}; изменение набора labels app_info, точный timeline подтверждается Argo CD/Git",
+        "tagKeys": "name,sync_status,health_status"
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Сервис",
+      "type": "link",
+      "url": "http://localhost:3000/d/service-overview",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Kubernetes",
+      "type": "link",
+      "url": "http://localhost:3000/d/kubernetes-operations",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Расследование",
+      "type": "link",
+      "url": "http://localhost:3000/d/incident-drilldown",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Логи выбранных pods в Explore",
+      "type": "link",
+      "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Capp%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%2Cpod%3D~%5C%22${pod:regex}%5C%22%7D%20%7C%20json%20%7C%20__error__%3D%5C%22%5C%22%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": true
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "RED: частота запросов",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "devops_practice:http_request_rate5m{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}",
+          "legendFormat": "{{component}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22devops_practice%3Ahttp_request_rate5m%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cservice%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "RED: доля 5xx",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "devops_practice:http_error_ratio5m{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}",
+          "legendFormat": "{{component}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22devops_practice%3Ahttp_error_ratio5m%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cservice%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "RED: p95 задержки",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "devops_practice:http_latency_p95_seconds5m{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}",
+          "legendFormat": "{{component}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22devops_practice%3Ahttp_latency_p95_seconds5m%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cservice%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Worker: возраст успешной обработки",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "devops_practice:worker_freshness_seconds{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\",component=~\"$component\"}",
+          "legendFormat": "{{component}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22devops_practice%3Aworker_freshness_seconds%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cservice%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Deployment: доступные replicas / desired",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "devops_practice:deployment_availability_ratio{cluster=\"devops-practice\",namespace=~\"$namespace\",service=\"devops-practice\"}",
+          "legendFormat": "{{deployment}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22devops_practice%3Adeployment_availability_ratio%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cservice%3D%5C%22devops-practice%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Выбранные pods: память",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (pod, container) (container_memory_working_set_bytes{cluster=\"devops-practice\",service=\"kubelet\",namespace=~\"$namespace\",pod=~\"$pod\",container=~\"$component\"})",
+          "legendFormat": "{{pod}} / {{container}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(pod%2C%20container)%20(container_memory_working_set_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kubelet%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cpod%3D~%5C%22${pod:regex}%5C%22%2Ccontainer%3D~%5C%22${component:regex}%5C%22%7D)%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Argo CD: sync / health",
+      "type": "stat",
+      "description": "Состояние приложения Argo CD; release history уточняется по Git commit/MR.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "argocd_app_info{cluster=\"devops-practice\",namespace=\"argocd\",service=\"argocd\",name=\"devops-practice\"}",
+          "legendFormat": "{{sync_status}} / {{health_status}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22argocd_app_info%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D%5C%22argocd%5C%22%2Cservice%3D%5C%22argocd%5C%22%2Cname%3D%5C%22devops-practice%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Логи по точному request ID",
+      "type": "logs",
+      "description": "Заполните textbox request_id. Поиск использует равенство JSON-поля, включая экранирование кавычек; пустой textbox не выбирает все логи.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "refId": "A",
+          "expr": "{cluster=\"devops-practice\",namespace=~\"$namespace\",app=\"devops-practice\",component=~\"$component\",pod=~\"$pod\"} | json | __error__=\"\" | request_id = ${request_id:doublequote}",
+          "queryType": "range",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true
+      },
+      "links": []
+    },
+    {
+      "id": 9,
+      "title": "Логи вокруг события",
+      "type": "logs",
+      "description": "Выбранный интервал, namespace, component и pod. Раскройте запись для request_id, error, partition и offset.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 42,
+        "w": 24,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "refId": "A",
+          "expr": "{cluster=\"devops-practice\",namespace=~\"$namespace\",app=\"devops-practice\",component=~\"$component\",pod=~\"$pod\"} | json | __error__=\"\"",
+          "queryType": "range",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": false,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none",
+        "enableLogDetails": true
+      },
+      "links": [
+        {
+          "title": "Открыть логи в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22loki%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Capp%3D%5C%22devops-practice%5C%22%2Ccomponent%3D~%5C%22${component:regex}%5C%22%2Cpod%3D~%5C%22${pod:regex}%5C%22%7D%20%7C%20json%20%7C%20__error__%3D%5C%22%5C%22%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    }
+  ]
+}

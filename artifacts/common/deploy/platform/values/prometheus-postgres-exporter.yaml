@@ -1,0 +1,31 @@
+fullnameOverride: postgresql-exporter
+replicaCount: 1
+image:
+  tag: v0.20.1
+service:
+  type: ClusterIP
+  port: 9187
+serviceMonitor:
+  enabled: false
+prometheusRule:
+  enabled: false
+rbac:
+  create: false
+serviceAccount:
+  create: false
+config:
+  datasource:
+    host: postgresql-primary.platform.svc.cluster.local
+    port: "5432"
+    database: devops_practice
+    userSecret: {name: postgresql-exporter-auth, key: username}
+    passwordSecret: {name: postgresql-exporter-auth, key: password}
+    sslmode: disable
+  logLevel: info
+  logFormat: json
+  extraArgs:
+    - --collector.stat_activity
+    - --collector.locks
+resources:
+  requests: {cpu: 25m, memory: 32Mi}
+  limits: {cpu: 200m, memory: 128Mi}

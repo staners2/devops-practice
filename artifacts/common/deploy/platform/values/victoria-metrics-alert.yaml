@@ -1,0 +1,103 @@
+serviceAccount:
+  automountToken: false
+server:
+  fullnameOverride: vmalert
+  image:
+    tag: v1.153.0
+  replicaCount: 1
+  datasource:
+    url: http://victoriametrics.monitoring.svc.cluster.local:8428
+  remoteWrite:
+    url: http://victoriametrics.monitoring.svc.cluster.local:8428/api/v1/write
+  remoteRead:
+    url: http://victoriametrics.monitoring.svc.cluster.local:8428
+  notifier:
+    url: http://alertmanager.monitoring.svc.cluster.local:9093
+  # Create vmalert-rules from the canonical deploy/monitoring/rules/{alerts,recording}.yaml files.
+  configMap: vmalert-rules
+  extraArgs:
+    rule:
+      - /config/alerts.yaml
+      - /config/recording.yaml
+    configCheckInterval: 1m
+    evaluationInterval: 15s
+    external.url: http://localhost:8880
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  service:
+    type: ClusterIP
+    clusterIP: ""
+  ingress:
+    enabled: false
+serviceMonitor:
+  enabled: false
+alertmanager:
+  enabled: true
+  fullnameOverride: alertmanager
+  image:
+    tag: v0.34.1
+  replicaCount: 1
+  retention: 72h
+  # Create this ConfigMap from canonical alertmanager.yaml and telegram.tmpl; never pass credentials via Helm.
+  configMap: alertmanager-config
+  extraArgs:
+    # The chart emits empty-valued argument keys verbatim; include the complete flag to disable HA.
+    "--cluster.listen-address=": ""
+    log.format: json
+    enable-feature: utf8-strict-mode
+  extraVolumes:
+    - name: telegram-template
+      configMap:
+        name: alertmanager-config
+        items:
+          - key: telegram.tmpl
+            path: telegram.tmpl
+    - name: telegram-credentials
+      secret:
+        secretName: alertmanager-telegram
+        defaultMode: 0440
+  extraVolumeMounts:
+    - name: telegram-template
+      mountPath: /etc/alertmanager/config
+      readOnly: true
+    - name: telegram-credentials
+      mountPath: /etc/alertmanager/telegram
+      readOnly: true
+  podSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+  securityContext:
+    enabled: true
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+  service:
+    type: ClusterIP
+    servicePort: 9093
+  ingress:
+    enabled: false

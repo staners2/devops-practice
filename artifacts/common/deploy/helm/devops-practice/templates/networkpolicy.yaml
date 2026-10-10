@@ -1,0 +1,79 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-default-deny
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-metrics
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: monitoring}
+      ports:
+        - {protocol: TCP, port: 9090}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-api-ingress
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: ingress-nginx}
+        - podSelector:
+            matchLabels:
+              {{- include "devops-practice.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: smoke
+      ports:
+        - {protocol: TCP, port: 8080}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-dependencies
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: kube-system}
+          podSelector:
+            matchLabels: {k8s-app: kube-dns}
+      ports:
+        - {protocol: UDP, port: 53}
+        - {protocol: TCP, port: 53}
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: platform}
+      ports:
+        - {protocol: TCP, port: 5432}
+        - {protocol: TCP, port: 6379}
+        - {protocol: TCP, port: 9092}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "devops-practice.selectorLabels" . | nindent 14 }}
+              app.kubernetes.io/component: api
+      ports:
+        - {protocol: TCP, port: 8080}

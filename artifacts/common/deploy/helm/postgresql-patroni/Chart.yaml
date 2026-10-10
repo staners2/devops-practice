@@ -1,0 +1,6 @@
+apiVersion: v2
+name: postgresql-patroni
+description: Учебный PostgreSQL HA с Patroni и Kubernetes ConfigMap DCS
+type: application
+version: 0.1.0
+appVersion: "4.1.5"

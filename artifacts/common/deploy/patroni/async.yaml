@@ -1,0 +1,6 @@
+synchronous_mode: false
+synchronous_mode_strict: false
+synchronous_node_count: 1
+postgresql:
+  parameters:
+    synchronous_commit: "on"

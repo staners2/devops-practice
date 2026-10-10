@@ -1,0 +1,3 @@
+---
+nginx_upstream_ip: "{{ hostvars[groups['app'][0]]['ansible_host'] }}"
+nginx_response_label: ansible-lab-07

@@ -1,0 +1,12 @@
+image:
+  repository: devops-practice
+  tag: module-02
+  pullPolicy: IfNotPresent
+
+api:
+  replicas: 2
+
+worker:
+  replicas: 1
+
+runtimeSecretName: devops-practice-runtime

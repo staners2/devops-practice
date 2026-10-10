@@ -1,0 +1,14 @@
+---
+# Заменить адреса и SSH-пользователя перед запуском; это пример частной сети.
+all:
+  vars:
+    ansible_user: mentor
+  children:
+    app:
+      hosts:
+        app-01:
+          ansible_host: 192.168.56.10
+    proxy:
+      hosts:
+        proxy-01:
+          ansible_host: 192.168.56.11

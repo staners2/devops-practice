@@ -1,0 +1,17 @@
+[Unit]
+Description=DevOps Practice Ansible 07
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory={{ application_dir }}
+ExecStart=/bin/bash {{ application_dir }}/start.sh http://{{ application_bind_ip }}:8080
+ExecStop=/usr/bin/docker compose --project-name devops-practice-ansible-07 --env-file {{ application_dir }}/.env --file {{ application_dir }}/compose.yaml --file {{ application_dir }}/compose.vm.yaml stop --timeout 15
+TimeoutStartSec=600
+TimeoutStopSec=90
+
+[Install]
+WantedBy=multi-user.target

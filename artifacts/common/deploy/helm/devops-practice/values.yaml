@@ -1,0 +1,52 @@
+image:
+  repository: devops-practice
+  tag: module-02
+  pullPolicy: IfNotPresent
+
+api:
+  replicas: 2
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+worker:
+  replicas: 1
+  strategy: RollingUpdate
+  command: ["/usr/local/bin/worker"]
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+runtimeSecretName: devops-practice-runtime
+config:
+  redisAddr: redis.platform.svc.cluster.local:6379
+  redisDB: "0"
+  kafkaBrokers: kafka.platform.svc.cluster.local:9092
+  kafkaTopic: requests.created.v1
+  kafkaGroup: request-worker-v1
+  cacheTTL: 30s
+  requestTimeout: 2s
+  shutdownTimeout: 10s
+  pgPoolMaxConns: "5"
+  pgPoolMinConns: "1"
+  pgStatementTimeout: 1s
+  pgLockTimeout: 500ms
+  pgIdleInTransactionTimeout: 5s
+
+ingress:
+  enabled: true
+  className: nginx
+  host: devops-practice.localhost
+
+smoke:
+  enabled: true
+migration:
+  enabled: true

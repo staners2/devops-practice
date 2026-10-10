@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: devops-practice-restore
+  namespace: argocd
+spec:
+  project: devops-practice
+  sources:
+    - repoURL: __GITOPS_REPO_URL__
+      targetRevision: main
+      path: deploy/helm/devops-practice
+      helm:
+        releaseName: devops-practice-restore
+        valueFiles:
+          - $values/deploy/environments/development/values.yaml
+          - $values/deploy/environments/restore/values.yaml
+    - repoURL: __GITOPS_REPO_URL__
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devops-practice
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+      selfHeal: true
+      allowEmpty: false

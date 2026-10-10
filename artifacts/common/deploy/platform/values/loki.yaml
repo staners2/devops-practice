@@ -1,0 +1,83 @@
+fullnameOverride: loki
+deploymentMode: Monolithic
+loki:
+  image:
+    tag: 3.7.8
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  storage:
+    type: filesystem
+  schemaConfig:
+    configs:
+      - from: "2026-01-01"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    retention_period: 72h
+    reject_old_samples_max_age: 72h
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 8
+    max_query_parallelism: 2
+    tsdb_max_query_parallelism: 2
+  compactor:
+    working_directory: /var/loki/compactor
+    compaction_interval: 10m
+    retention_enabled: true
+    retention_delete_delay: 2h
+    retention_delete_worker_count: 10
+    delete_request_store: filesystem
+  querier:
+    max_concurrent: 2
+  analytics:
+    reporting_enabled: false
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 5Gi
+    storageClass: local-path
+    whenDeleted: Retain
+    whenScaled: Retain
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+  service:
+    type: ClusterIP
+  podDisruptionBudget:
+    enabled: false
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+gateway:
+  enabled: false
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+minio:
+  enabled: false
+rollout_operator:
+  enabled: false
+ruler:
+  enabled: false
+sidecar:
+  rules:
+    enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false
+serviceAccount:
+  automountServiceAccountToken: false

@@ -1,0 +1,35 @@
+gitlabUrl: https://gitlab.com/
+image:
+  registry: docker.io
+  image: gitlab/gitlab-runner
+  tag: alpine-v19.4.1@sha256:4da99e249eb79dc86a27af77b5c5d6cc46445c802b29294441081ae27410159a
+imagePullPolicy: IfNotPresent
+concurrent: 1
+unregisterRunners: true
+rbac:
+  create: true
+  clusterWideAccess: false
+serviceAccount:
+  create: true
+  name: gitlab-runner
+runners:
+  secret: gitlab-runner-auth
+  jobNamespace: gitlab-runner
+  config: |
+    [[runners]]
+      [runners.kubernetes]
+        namespace = "gitlab-runner"
+        image = "alpine:3.23.3"
+        privileged = false
+        service_account = "gitlab-runner"
+        cpu_request = "100m"
+        memory_request = "128Mi"
+        cpu_limit = "2"
+        memory_limit = "2Gi"
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi

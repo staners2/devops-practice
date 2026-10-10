@@ -1,0 +1,9 @@
+# Замените значениями выделенного учебного folder. Это не credential.
+folder_id      = "your-lab-folder-id"
+image_id       = "verified-ubuntu-image-id"
+owner          = "student"
+name_prefix    = "student-devops-08"
+operator_cidr  = "203.0.113.10/32" # Документационный адрес: замените своим.
+ssh_user       = "devops"
+ssh_public_key = "ssh-ed25519 YOUR_PUBLIC_KEY_WITHOUT_COMMENT"
+egress_mode    = "bootstrap" # После успешной установки вернуть restricted.

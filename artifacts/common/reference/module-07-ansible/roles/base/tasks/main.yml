@@ -1,0 +1,12 @@
+---
+- name: Установить необходимые системные пакеты
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - coreutils
+      - curl
+      - openssl
+      - python3
+    state: present
+    update_cache: true
+    cache_valid_time: 86400

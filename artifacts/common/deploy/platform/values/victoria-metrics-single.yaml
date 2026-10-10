@@ -1,0 +1,44 @@
+rbac:
+  create: false
+serviceAccount:
+  automountToken: false
+server:
+  fullnameOverride: victoriametrics
+  image:
+    tag: v1.153.0
+  mode: statefulSet
+  replicaCount: 1
+  retentionPeriod: 3d
+  extraArgs:
+    memory.allowedPercent: 40
+    search.maxMemoryPerQuery: 32MiB
+    search.maxConcurrentRequests: 4
+    storage.minFreeDiskSpaceBytes: 128MiB
+  persistentVolume:
+    enabled: true
+    storageClassName: local-path
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 768Mi
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  service:
+    type: ClusterIP
+    clusterIP: ""
+  ingress:
+    enabled: false
+serviceMonitor:
+  enabled: false

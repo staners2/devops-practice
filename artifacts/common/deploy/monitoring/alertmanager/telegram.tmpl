@@ -1,0 +1,14 @@
+{{ define "devops-practice.telegram" -}}
+{{ if eq .Status "firing" }}СРАБОТАЛО{{ else }}ВОССТАНОВЛЕНО{{ end }}: {{ .GroupLabels.alertname }}
+Сервис: {{ .GroupLabels.service }}
+Namespace: {{ .GroupLabels.namespace }}
+{{ range .Alerts }}
+{{ if eq .Status "firing" }}Проблема{{ else }}Восстановлено{{ end }}: {{ .Annotations.summary }}
+{{ .Annotations.description }}
+Критичность: {{ .Labels.severity }}
+Начало (UTC): {{ .StartsAt.UTC.Format "2006-01-02 15:04:05" }}
+{{ if eq .Status "resolved" }}Конец (UTC): {{ .EndsAt.UTC.Format "2006-01-02 15:04:05" }}
+{{ end }}Dashboard: {{ .Annotations.dashboard_url }}
+Runbook в репозитории: {{ .Annotations.runbook_url }}
+{{ end -}}
+{{ end }}

@@ -1,0 +1,230 @@
+groups:
+  - name: devops-practice-alerts
+    interval: 30s
+    rules:
+      - alert: ApplicationTargetDown
+        expr: >-
+          (up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component=~"api|worker"} == 0) or absent(up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}) or absent(up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"})
+        for: 2m
+        labels:
+          severity: critical
+          service: devops-practice
+        annotations:
+          summary: 'Приложение недоступно для сбора метрик'
+          description: 'Target {{ $labels.component }} не отвечает или отсутствует в discovery более 2 минут. Проверьте pod, metrics listener и vmagent.'
+          dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#applicationtargetdown'
+      - alert: DependencyUnavailable
+        expr: >-
+          min by (cluster, namespace, service, component, dependency) (devops_practice_dependency_up{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component=~"api|worker"}) == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: devops-practice
+        annotations:
+          summary: 'Зависимость приложения недоступна'
+          description: '{{ $labels.component }} не может использовать {{ $labels.dependency }} более 1 минуты. Проверьте readiness, логи и состояние зависимости.'
+          dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#dependencyunavailable'
+      - alert: APIHighErrorRate
+        expr: >-
+          devops_practice:http_error_ratio5m > 0.05 and on (cluster, namespace, service, component) devops_practice:http_request_rate5m > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: devops-practice
+        annotations:
+          summary: 'Высокая доля ошибок API'
+          description: 'Доля 5xx на /api/* превышает 5% более 5 минут при ненулевом трафике. Сопоставьте RED-сигналы с dependency health и логами.'
+          dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#apihigherrorrate'
+      - alert: APIHighLatency
+        expr: >-
+          devops_practice:http_latency_p95_seconds5m > 0.5 and on (cluster, namespace, service, component) devops_practice:http_request_rate5m > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: devops-practice
+        annotations:
+          summary: 'Высокая задержка API'
+          description: 'p95 запросов /api/* превышает 500 ms более 5 минут при ненулевом трафике. Проверьте зависимости и ресурсы API.'
+          dashboard_url: 'http://localhost:3000/d/service-overview?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#apihighlatency'
+      - alert: WorkerStalled
+        expr: >-
+          (devops_practice:worker_freshness_seconds > 120 and on (cluster, namespace, service) devops_practice:events_published_rate5m{result="success"} > 0) or ((sum by (cluster, namespace, service) (devops_practice:events_published_rate5m{result="success"}) > 0) unless on (cluster, namespace, service) (max by (cluster, namespace, service) (devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}) > 0))
+        for: 2m
+        labels:
+          severity: warning
+          service: devops-practice
+          component: worker
+        annotations:
+          summary: 'Worker не обрабатывает опубликованные события'
+          description: 'API публикует события, но worker не был успешен последние 2 минуты либо ещё не обработал ни одного события. Условие сохраняется более 2 минут; проверьте rollout и Kafka/Redis.'
+          dashboard_url: 'http://localhost:3000/d/incident-drilldown?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#workerstalled'
+      - alert: DeploymentReplicasMismatch
+        expr: >-
+          max by (cluster, namespace, deployment) (kube_deployment_status_replicas_available{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"}) < max by (cluster, namespace, deployment) (kube_deployment_spec_replicas{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"})
+        for: 3m
+        labels:
+          severity: warning
+          service: devops-practice
+        annotations:
+          summary: 'Deployment не достиг желаемого числа replicas'
+          description: 'В {{ $labels.deployment }} available replicas меньше desired более 3 минут. Проверьте pod events и изменение в Argo CD.'
+          dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#deploymentreplicasmismatch'
+      - alert: PodRestartingTooOften
+        expr: >-
+          sum by (cluster, namespace, pod, container) (increase(kube_pod_container_status_restarts_total{cluster="devops-practice",namespace="devops-practice",container=~"api|worker"}[10m])) >= 3
+        for: 5m
+        labels:
+          severity: warning
+          service: devops-practice
+        annotations:
+          summary: 'Контейнер приложения часто перезапускается'
+          description: '{{ $labels.pod }}/{{ $labels.container }} перезапустился не менее 3 раз за 10 минут; условие сохраняется более 5 минут. Проверьте previous logs и termination reason.'
+          dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#podrestartingtoooften'
+      - alert: VictoriaMetricsStorageLow
+        expr: >-
+          min by (cluster, namespace, service) (vm_free_disk_space_bytes{cluster="devops-practice",namespace="monitoring",service="victoriametrics"}) < 536870912
+        for: 5m
+        labels:
+          severity: critical
+          service: victoriametrics
+        annotations:
+          summary: 'VictoriaMetrics: мало свободного места'
+          description: 'На filesystem хранилища VictoriaMetrics доступно менее 512 MiB более 5 минут. Проверьте PVC/node, retention и скорость поступления метрик.'
+          dashboard_url: 'http://localhost:3000/d/kubernetes-operations?var-namespace={{ $labels.namespace }}'
+          runbook_url: 'docs/runbooks/observability.md#victoriametricsstoragelow'
+  - name: postgresql-alerts
+    interval: 30s
+    rules:
+      - alert: PostgreSQLUnavailable
+        expr: >-
+          (pg_up{job="postgresql"} == 0) or (up{job="postgresql"} == 0) or absent(up{job="postgresql"})
+        for: 2m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: critical
+        annotations:
+          summary: 'PostgreSQL exporter или БД недоступны'
+          description: 'Проверьте exporter, Secret, primary endpoint и NetworkPolicy. Отсутствующая series не означает здоровую БД.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLPrimaryMissing
+        expr: >-
+          postgresql:primary_count != 1
+        for: 1m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: critical
+        annotations:
+          summary: 'Patroni: число primary не равно одному'
+          description: 'Проверьте DCS, роли и endpoints. Не назначайте primary вручную и не удаляйте PVC.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PatroniMemberMissing
+        expr: >-
+          postgresql:member_count < 3
+        for: 2m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: warning
+        annotations:
+          summary: 'Patroni: доступно меньше трёх участников'
+          description: 'Проверьте каждый target и состояние PostgreSQL; недоступный target не считается исправной replica.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PatroniReplicationLag
+        expr: >-
+          postgresql:replica_lag_bytes > 1048576
+        for: 5m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: warning
+        annotations:
+          summary: 'Patroni: устойчивое отставание replay WAL'
+          description: 'Replica отстаёт больше чем на 1 MiB более 5 минут. Возраст последней транзакции при простое не является lag.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLBackupFailed
+        expr: >-
+          postgresql:latest_backup_failed > 0
+        for: 1m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: warning
+        annotations:
+          summary: 'Последний backup Job завершился с ошибкой'
+          description: 'Проверьте stdout Job, место на backup PVC и checksum. Новый успешный Job должен снять сигнал старой ошибки.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLBackupStale
+        expr: >-
+          postgresql:backup_age_seconds > 25200
+        for: 5m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: critical
+        annotations:
+          summary: 'Нет свежего успешного backup PostgreSQL'
+          description: 'Прошло более 7 часов с последнего успеха либо создания CronJob. До первого успеха возраст отсчитывается от создания.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLBackupMissing
+        expr: >-
+          absent(kube_cronjob_created{cluster="devops-practice",namespace="platform",cronjob="postgresql-backup"})
+        for: 5m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: critical
+        annotations:
+          summary: 'CronJob резервного копирования отсутствует'
+          description: 'Проверьте установку postgresql-backup и target kube-state-metrics; отсутствие series требует расследования.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLPoolPressure
+        expr: >-
+          devops_practice_postgres_pool_acquired_connections{pod=~"devops-practice-(api|worker)-.*"} / devops_practice_postgres_pool_max_connections > 0.9
+        for: 3m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: warning
+        annotations:
+          summary: 'Pool PostgreSQL почти полностью занят'
+          description: 'Сопоставьте acquire/canceled metrics с pg_stat_activity, blocking PID и API latency; не увеличивайте pool без проверки причины.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'
+      - alert: PostgreSQLConnectionsHigh
+        expr: >-
+          sum(pg_stat_database_numbackends{job="postgresql"}) / max(pg_settings_max_connections{job="postgresql"}) > 0.8
+        for: 5m
+        labels:
+          cluster: devops-practice
+          namespace: platform
+          service: postgresql
+          severity: warning
+        annotations:
+          summary: 'PostgreSQL: много соединений'
+          description: 'Проверьте бюджеты соединений API, worker, migrator и exporter; найдите долгие и idle-in-transaction сессии.'
+          dashboard_url: 'http://localhost:3000/d/postgresql-operations'
+          runbook_url: 'docs/runbooks/postgresql-operations.md#мониторинг-и-alerts'

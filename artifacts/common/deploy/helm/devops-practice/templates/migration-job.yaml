@@ -1,0 +1,44 @@
+{{- if .Values.migration.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-migrate
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-10"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 180
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "devops-practice.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- include "devops-practice.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: migrate
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/usr/local/bin/migrate"]
+          securityContext:
+            {{- include "devops-practice.containerSecurityContext" . | nindent 12 }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.runtimeSecretName }}, key: DATABASE_URL}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: {{ .Values.runtimeSecretName }}, key: REDIS_PASSWORD}
+            - {name: REDIS_ADDR, value: {{ .Values.config.redisAddr | quote }}}
+            - {name: KAFKA_BROKERS, value: {{ .Values.config.kafkaBrokers | quote }}}
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+{{- end }}

@@ -1,0 +1,12 @@
+# Image наследуется из тех же immutable development values.
+api:
+  replicas: 1
+worker:
+  replicas: 1
+runtimeSecretName: devops-practice-restore-runtime
+config:
+  redisDB: "1"
+  kafkaTopic: requests.restore.created.v1
+  kafkaGroup: request-worker-restore-v1
+ingress:
+  enabled: false

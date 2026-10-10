@@ -1,0 +1,103 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true" && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web")'
+    - when: never
+
+stages: [validate, security, plan, apply, destroy-plan, destroy-apply]
+
+variables:
+  TF_ROOT: reference/module-08-terraform
+  TF_IN_AUTOMATION: "true"
+  CHECKPOINT_DISABLE: "1"
+
+default:
+  image: python:3.14.5-slim-bookworm@sha256:a9bee15510a364124aa24692899d269835683b883de42f7ebec8c293cf679ccb
+  tags: [k8s]
+  interruptible: false
+  before_script:
+    - apt-get update && apt-get install -y --no-install-recommends curl unzip jq git
+    - bash scripts/ci/install-terraform-tools.sh deploy/terraform-lab/versions.env /usr/local/bin
+
+terraform:validate:
+  stage: validate
+  timeout: 20m
+  script:
+    - bash reference/module-08-terraform/ci.sh validate
+
+terraform:security:
+  stage: security
+  timeout: 20m
+  image:
+    name: aquasec/trivy:0.74.0@sha256:62b1e65e8869bc4b4c6aa4fa2b21595256c7c2f6018a9d9ad61caf87187c1969
+    entrypoint: [""]
+  before_script: []
+  script:
+    - trivy config --exit-code 1 --severity HIGH,CRITICAL "$TF_ROOT"
+
+terraform:secrets:
+  stage: security
+  timeout: 20m
+  image:
+    name: zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+    entrypoint: [""]
+  before_script: []
+  variables:
+    GIT_DEPTH: "0"
+  script:
+    - gitleaks git --redact --exit-code 1
+
+.cloud:
+  timeout: 20m
+  resource_group: "terraform-$TF_STATE_NAME"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_REF_PROTECTED == "true" && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "web")'
+    - when: never
+
+.plan-artifact:
+  artifacts:
+    access: developer
+    expire_in: 1 hour
+    paths:
+      - $TF_ROOT/plan.tfplan
+      - $TF_ROOT/plan-manifest.json
+
+terraform:plan:
+  extends: [.cloud, .plan-artifact]
+  stage: plan
+  script:
+    - bash reference/module-08-terraform/ci.sh plan
+
+terraform:apply:
+  extends: .cloud
+  stage: apply
+  needs:
+    - job: terraform:plan
+      artifacts: true
+  when: manual
+  allow_failure: false
+  script:
+    - bash reference/module-08-terraform/ci.sh apply
+
+terraform:destroy-plan:
+  extends: [.cloud, .plan-artifact]
+  stage: destroy-plan
+  needs:
+    - job: terraform:validate
+    - job: terraform:security
+    - job: terraform:secrets
+  when: manual
+  allow_failure: false
+  script:
+    - bash reference/module-08-terraform/ci.sh destroy-plan
+
+terraform:destroy-apply:
+  extends: .cloud
+  stage: destroy-apply
+  needs:
+    - job: terraform:destroy-plan
+      artifacts: true
+  when: manual
+  allow_failure: false
+  script:
+    - bash reference/module-08-terraform/ci.sh destroy-apply

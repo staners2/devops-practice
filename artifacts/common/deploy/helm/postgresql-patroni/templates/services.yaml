@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-patroni
+  labels:
+    {{- include "postgresql-patroni.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector:
+    {{- include "postgresql-patroni.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+    - name: patroni-rest
+      port: 8008
+      targetPort: patroni-rest
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-primary
+  annotations:
+    ignore-check.kube-linter.io/dangling-service: Patroni assigns role=primary dynamically; only this pod accepts writes.
+  labels:
+    {{- include "postgresql-patroni.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "postgresql-patroni.selectorLabels" . | nindent 4 }}
+    role: primary
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgresql-replicas
+  annotations:
+    ignore-check.kube-linter.io/dangling-service: Patroni assigns role=replica dynamically after initialization and elections.
+  labels:
+    {{- include "postgresql-patroni.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "postgresql-patroni.selectorLabels" . | nindent 4 }}
+    role: replica
+  ports:
+    - name: postgresql
+      port: 5432
+      targetPort: postgresql

@@ -1,0 +1,199 @@
+---
+- name: Проверить параметры приложения
+  ansible.builtin.assert:
+    that:
+      - application_dir == '/opt/devops-practice-ansible-07'
+      - application_image is match('^[a-z0-9][a-z0-9./:_-]+$')
+      - application_tool_image is match('^[a-z0-9][a-z0-9./:_-]+$')
+      - application_bind_ip is match('^[0-9.]+$')
+      - application_proxy_url is match('^http://[a-zA-Z0-9.-]+(:[0-9]+)?$')
+      - application_postgres_user is match('^[a-z][a-z0-9_]+$')
+      - application_postgres_db is match('^[a-z][a-z0-9_]+$')
+      - vault_postgres_password | default('') is match('^[a-fA-F0-9]{48}$')
+    fail_msg: Проверьте inventory и Vault; пароль PostgreSQL должен быть результатом openssl rand -hex 24.
+  no_log: true
+
+- name: Проверить наличие принятой конфигурации
+  ansible.builtin.stat:
+    path: "{{ application_dir }}/.accepted/.env"
+    get_checksum: false
+  register: application_accepted
+
+- name: Прочитать принятый environment
+  ansible.builtin.slurp:
+    src: "{{ application_dir }}/.accepted/.env"
+  register: application_accepted_env
+  when: application_accepted.stat.exists
+  no_log: true
+
+- name: Определить предыдущий принятый image
+  ansible.builtin.set_fact:
+    application_previous_image: "{{ (application_accepted_env.content | b64decode | regex_findall('(?m)^APPLICATION_IMAGE=([^\n]+)$')) | first }}"
+  when: application_accepted.stat.exists
+  no_log: true
+
+- name: Проверить локальные образы до изменения сервиса
+  ansible.builtin.command:
+    argv: [docker, image, inspect, "{{ item }}"]
+  loop: "{{ ([application_image, application_tool_image] + ([application_previous_image] if application_accepted.stat.exists else [])) | unique }}"
+  changed_when: false
+  when: not ansible_check_mode
+  timeout: 20
+  no_log: true
+
+- name: Создать рабочий каталог приложения
+  ansible.builtin.file:
+    path: "{{ application_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0750'
+
+- name: Применить версию приложения с восстановлением при отказе
+  when: not ansible_check_mode
+  block:
+    - name: Подготовить все runtime файлы внутри транзакции
+      ansible.builtin.include_tasks: stage.yml
+
+    - name: Применить изменение unit
+      ansible.builtin.meta: flush_handlers
+
+    - name: Включить и запустить приложение после Docker
+      ansible.builtin.systemd_service:
+        name: devops-practice-ansible-07
+        enabled: true
+        state: started
+      register: application_unit
+      no_log: true
+
+    - name: Привести API и worker к выбранному image
+      community.docker.docker_compose_v2:
+        project_src: "{{ application_dir }}"
+        project_name: devops-practice-ansible-07
+        files: [compose.yaml, compose.vm.yaml]
+        env_files: [.env]
+        services: [api, worker]
+        dependencies: false
+        build: never
+        pull: never
+        state: present
+      register: application_containers
+      timeout: 120
+      no_log: true
+
+    - name: Дождаться health-check через Nginx
+      ansible.builtin.uri:
+        url: "{{ application_proxy_url }}/api/health-check"
+        status_code: 200
+        timeout: 3
+      register: application_health
+      until: application_health.status | default(0) == 200
+      retries: 20
+      delay: 2
+
+    - name: Определить необходимость проверки и нового снимка
+      ansible.builtin.set_fact:
+        application_changed: >-
+          {{ not application_accepted.stat.exists or application_compose.changed
+             or application_override.changed or application_verify.changed
+             or application_start.changed or application_env.changed
+             or application_unit_file.changed or application_unit.changed
+             or application_containers.changed }}
+
+    - name: Проверить полный поток после изменения deployment
+      ansible.builtin.command:
+        argv: [bash, "{{ application_dir }}/verify.sh", "{{ application_dir }}", "{{ application_proxy_url }}"]
+      when: application_changed
+      changed_when: true
+      timeout: 140
+      no_log: true
+
+    - name: Создать отдельный закрытый снимок конфигурации
+      ansible.builtin.tempfile:
+        path: "{{ application_dir }}"
+        prefix: .accepted-
+        state: directory
+      register: application_snapshot
+      when: application_changed
+
+    - name: Сохранить проверенные runtime файлы
+      ansible.builtin.copy:
+        src: "{{ item.path }}"
+        dest: "{{ application_snapshot.path }}/{{ item.name }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: '0600'
+      loop: "{{ application_snapshot_files }}"
+      when: application_changed
+      no_log: true
+      diff: false
+
+    - name: Подготовить указатель на полный проверенный снимок
+      ansible.builtin.file:
+        src: "{{ application_snapshot.path }}"
+        dest: "{{ application_dir }}/.accepted.next"
+        state: link
+        follow: false
+        force: true
+      when: application_changed
+
+    - name: Атомарно принять новый снимок
+      ansible.builtin.command:
+        argv: [mv, --force, --no-target-directory, "{{ application_dir }}/.accepted.next", "{{ application_dir }}/.accepted"]
+      changed_when: true
+      when: application_changed
+  rescue:
+    - name: Сообщить об отказе первичной установки
+      ansible.builtin.fail:
+        msg: Первичная установка не принята; предыдущего рабочего релиза нет. Данные не удалялись.
+      when: not application_accepted.stat.exists
+
+    - name: Восстановить принятые runtime файлы
+      ansible.builtin.copy:
+        src: "{{ application_dir }}/.accepted/{{ item.name }}"
+        dest: "{{ item.path }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "{{ '0600' if item.name == '.env' else ('0750' if item.name in ['start.sh', 'verify.sh'] else '0644') }}"
+      loop: "{{ application_snapshot_files }}"
+      no_log: true
+      diff: false
+
+    - name: Перечитать восстановленный unit и запустить сервис
+      ansible.builtin.systemd_service:
+        name: devops-practice-ansible-07
+        daemon_reload: true
+        enabled: true
+        state: started
+      no_log: true
+
+    - name: Восстановить контейнеры принятого релиза
+      community.docker.docker_compose_v2:
+        project_src: "{{ application_dir }}"
+        project_name: devops-practice-ansible-07
+        files: [compose.yaml, compose.vm.yaml]
+        env_files: [.env]
+        services: [api, worker]
+        dependencies: false
+        build: never
+        pull: never
+        state: present
+      timeout: 120
+      no_log: true
+
+    - name: Проверить полный поток после восстановления
+      ansible.builtin.command:
+        argv: [bash, "{{ application_dir }}/verify.sh", "{{ application_dir }}", "{{ application_proxy_url }}"]
+      changed_when: true
+      timeout: 140
+      no_log: true
+
+    - name: Сообщить о неудачном обновлении
+      ansible.builtin.fail:
+        msg: Новая конфигурация не принята; предыдущий релиз восстановлен и проверен. Данные не удалялись.
+
+- name: Показать прогноз runtime файлов без применения
+  ansible.builtin.include_tasks: stage.yml
+  when: ansible_check_mode

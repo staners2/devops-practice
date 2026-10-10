@@ -1,0 +1,26 @@
+fullnameOverride: node-exporter
+daemonsetAnnotations:
+  ignore-check.kube-linter.io/host-network: Node network counters require the host network namespace.
+  ignore-check.kube-linter.io/host-pid: Node process collectors require the host process namespace.
+  ignore-check.kube-linter.io/sensitive-host-mounts: Read-only host /proc, /sys and / mounts are required for node metrics.
+image:
+  tag: v1.12.1
+service:
+  type: ClusterIP
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    cpu: 250m
+    memory: 64Mi
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+prometheus:
+  monitor:
+    enabled: false
+  podMonitor:
+    enabled: false

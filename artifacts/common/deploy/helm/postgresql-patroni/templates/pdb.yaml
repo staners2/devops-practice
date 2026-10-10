@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: postgresql-patroni
+  labels:
+    {{- include "postgresql-patroni.labels" . | nindent 4 }}
+spec:
+  minAvailable: 2
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      {{- include "postgresql-patroni.selectorLabels" . | nindent 6 }}

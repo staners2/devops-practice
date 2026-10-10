@@ -1,0 +1,1191 @@
+{
+  "uid": "kubernetes-operations",
+  "title": "Kubernetes: эксплуатация",
+  "description": "Локальный development-кластер devops-practice. Метрики и логи поступают через vmagent и Alloy.",
+  "tags": [
+    "devops-practice",
+    "module-04"
+  ],
+  "timezone": "utc",
+  "schemaVersion": 41,
+  "version": 1,
+  "editable": false,
+  "refresh": "30s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(kube_namespace_status_phase{cluster=\"devops-practice\",service=\"kube-state-metrics\"}, namespace)",
+        "query": {
+          "query": "label_values(kube_namespace_status_phase{cluster=\"devops-practice\",service=\"kube-state-metrics\"}, namespace)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "node",
+        "label": "Node",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "victoriametrics"
+        },
+        "definition": "label_values(node_cpu_seconds_total{cluster=\"devops-practice\",service=\"node-exporter\"}, instance)",
+        "query": {
+          "query": "label_values(node_cpu_seconds_total{cluster=\"devops-practice\",service=\"node-exporter\"}, instance)",
+          "refId": "StandardVariableQuery"
+        },
+        "refresh": 2,
+        "sort": 1,
+        "multi": true,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {
+          "selected": false,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Сервис",
+      "type": "link",
+      "url": "http://localhost:3000/d/service-overview",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Kubernetes",
+      "type": "link",
+      "url": "http://localhost:3000/d/kubernetes-operations",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    },
+    {
+      "title": "Расследование",
+      "type": "link",
+      "url": "http://localhost:3000/d/incident-drilldown",
+      "keepTime": true,
+      "includeVars": true,
+      "targetBlank": false
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Node: загрузка CPU",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "1 - avg by (instance) (rate(node_cpu_seconds_total{cluster=\"devops-practice\",service=\"node-exporter\",instance=~\"$node\",mode=\"idle\"}[$__rate_interval]))",
+          "legendFormat": "{{instance}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%221%20-%20avg%20by%20(instance)%20(rate(node_cpu_seconds_total%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%22${node:regex}%5C%22%2Cmode%3D%5C%22idle%5C%22%7D%5B%24__rate_interval%5D))%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Node: использование памяти",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "1 - node_memory_MemAvailable_bytes{cluster=\"devops-practice\",service=\"node-exporter\",instance=~\"$node\"} / node_memory_MemTotal_bytes{cluster=\"devops-practice\",service=\"node-exporter\",instance=~\"$node\"}",
+          "legendFormat": "{{instance}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%221%20-%20node_memory_MemAvailable_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%22${node:regex}%5C%22%7D%20%2F%20node_memory_MemTotal_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%22${node:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Node: заполнение filesystem",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "1 - node_filesystem_avail_bytes{cluster=\"devops-practice\",service=\"node-exporter\",instance=~\"$node\",fstype!~\"tmpfs|overlay|squashfs\",mountpoint!~\"/var/lib/kubelet/pods/.*\"} / node_filesystem_size_bytes{cluster=\"devops-practice\",service=\"node-exporter\",instance=~\"$node\",fstype!~\"tmpfs|overlay|squashfs\",mountpoint!~\"/var/lib/kubelet/pods/.*\"}",
+          "legendFormat": "{{instance}} / {{mountpoint}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%221%20-%20node_filesystem_avail_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%22${node:regex}%5C%22%2Cfstype!~%5C%22tmpfs%7Coverlay%7Csquashfs%5C%22%2Cmountpoint!~%5C%22%2Fvar%2Flib%2Fkubelet%2Fpods%2F.*%5C%22%7D%20%2F%20node_filesystem_size_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22node-exporter%5C%22%2Cinstance%3D~%5C%22${node:regex}%5C%22%2Cfstype!~%5C%22tmpfs%7Coverlay%7Csquashfs%5C%22%2Cmountpoint!~%5C%22%2Fvar%2Flib%2Fkubelet%2Fpods%2F.*%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Workloads: desired / available replicas",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "kube_deployment_spec_replicas{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "desired: {{namespace}}/{{deployment}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "B",
+          "expr": "kube_deployment_status_replicas_available{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "available: {{namespace}}/{{deployment}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "C",
+          "expr": "kube_statefulset_replicas{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "desired: {{namespace}}/{{statefulset}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "D",
+          "expr": "kube_statefulset_status_replicas_ready{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "ready: {{namespace}}/{{statefulset}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "E",
+          "expr": "kube_daemonset_status_desired_number_scheduled{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "desired: {{namespace}}/{{daemonset}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "F",
+          "expr": "kube_daemonset_status_number_available{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "available: {{namespace}}/{{daemonset}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22kube_deployment_spec_replicas%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kube-state-metrics%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "CPU: requests / limits / usage",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (namespace) (kube_pod_container_resource_requests{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"cpu\",unit=\"core\"})",
+          "legendFormat": "requests: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "B",
+          "expr": "sum by (namespace) (kube_pod_container_resource_limits{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"cpu\",unit=\"core\"})",
+          "legendFormat": "limits: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "C",
+          "expr": "sum by (namespace) (rate(container_cpu_usage_seconds_total{cluster=\"devops-practice\",service=\"kubelet\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[$__rate_interval]))",
+          "legendFormat": "usage: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(namespace)%20(kube_pod_container_resource_requests%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kube-state-metrics%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cresource%3D%5C%22cpu%5C%22%2Cunit%3D%5C%22core%5C%22%7D)%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Память: requests / limits / usage",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (namespace) (kube_pod_container_resource_requests{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"memory\",unit=\"byte\"})",
+          "legendFormat": "requests: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "B",
+          "expr": "sum by (namespace) (kube_pod_container_resource_limits{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"memory\",unit=\"byte\"})",
+          "legendFormat": "limits: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "C",
+          "expr": "sum by (namespace) (container_memory_working_set_bytes{cluster=\"devops-practice\",service=\"kubelet\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "usage: {{namespace}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(namespace)%20(kube_pod_container_resource_requests%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kube-state-metrics%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%2Cresource%3D%5C%22memory%5C%22%2Cunit%3D%5C%22byte%5C%22%7D)%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Pod: перезапуски за интервал",
+      "type": "stat",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (namespace, pod, container) (increase(kube_pod_container_status_restarts_total{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"}[$__range]))",
+          "legendFormat": "{{namespace}} / {{pod}} / {{container}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(namespace%2C%20pod%2C%20container)%20(increase(kube_pod_container_status_restarts_total%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kube-state-metrics%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%7D%5B%24__range%5D))%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Jobs: ошибки",
+      "type": "stat",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 24,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "kube_job_status_failed{cluster=\"devops-practice\",service=\"kube-state-metrics\",namespace=~\"$namespace\"} > 0",
+          "legendFormat": "{{namespace}}/{{job_name}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22kube_job_status_failed%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kube-state-metrics%5C%22%2Cnamespace%3D~%5C%22${namespace:regex}%5C%22%7D%20%3E%200%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Ingress: частота запросов",
+      "type": "timeseries",
+      "description": "Все ingress в кластере; namespace target = ingress-nginx, namespace обслуживаемого ingress доступен как exported_namespace.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (ingress) (rate(nginx_ingress_controller_requests{cluster=\"devops-practice\",service=\"ingress-nginx\",namespace=\"ingress-nginx\"}[$__rate_interval]))",
+          "legendFormat": "{{ingress}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(ingress)%20(rate(nginx_ingress_controller_requests%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22ingress-nginx%5C%22%2Cnamespace%3D%5C%22ingress-nginx%5C%22%7D%5B%24__rate_interval%5D))%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Ingress: ответы 4xx / 5xx",
+      "type": "timeseries",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 32,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (status) (rate(nginx_ingress_controller_requests{cluster=\"devops-practice\",service=\"ingress-nginx\",namespace=\"ingress-nginx\",status=~\"4..|5..\"}[$__rate_interval]))",
+          "legendFormat": "{{status}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(status)%20(rate(nginx_ingress_controller_requests%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22ingress-nginx%5C%22%2Cnamespace%3D%5C%22ingress-nginx%5C%22%2Cstatus%3D~%5C%224..%7C5..%5C%22%7D%5B%24__rate_interval%5D))%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Scrape targets: состояние",
+      "type": "stat",
+      "description": "1 = target отвечает; 0 = scrape неуспешен. Отсутствующий discovery target здесь не появляется.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "up{cluster=\"devops-practice\"}",
+          "legendFormat": "{{job}} / {{namespace}} / {{service}} / {{instance}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22up%7Bcluster%3D%5C%22devops-practice%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Observability stack: targets",
+      "type": "stat",
+      "description": "",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 40,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "up{cluster=\"devops-practice\",namespace=\"monitoring\",service=~\"victoriametrics|vmagent|vmalert|alertmanager|grafana|loki|alloy|node-exporter\"}",
+          "legendFormat": "{{service}} / {{instance}}",
+          "range": false,
+          "instant": true,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22up%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D%5C%22monitoring%5C%22%2Cservice%3D~%5C%22victoriametrics%7Cvmagent%7Cvmalert%7Calertmanager%7Cgrafana%7Cloki%7Calloy%7Cnode-exporter%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "VictoriaMetrics: свободное место",
+      "type": "timeseries",
+      "description": "Native metric отражает filesystem хранилища; critical alert при свободном месте меньше 512 MiB.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "vm_free_disk_space_bytes{cluster=\"devops-practice\",namespace=\"monitoring\",service=\"victoriametrics\"}",
+          "legendFormat": "свободно",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22vm_free_disk_space_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cnamespace%3D%5C%22monitoring%5C%22%2Cservice%3D%5C%22victoriametrics%5C%22%7D%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Observability: память",
+      "type": "timeseries",
+      "description": "Память monitoring namespace; CPU всего кластера и namespace requests/limits доступны выше.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 48,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (container) (container_memory_working_set_bytes{cluster=\"devops-practice\",service=\"kubelet\",namespace=\"monitoring\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "{{container}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(container)%20(container_memory_working_set_bytes%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kubelet%5C%22%2Cnamespace%3D%5C%22monitoring%5C%22%2Ccontainer!%3D%5C%22%5C%22%2Ccontainer!%3D%5C%22POD%5C%22%7D)%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "title": "Observability: CPU",
+      "type": "timeseries",
+      "description": "Потребление CPU контейнерами monitoring namespace.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "victoriametrics"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 56,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "victoriametrics"
+          },
+          "refId": "A",
+          "expr": "sum by (container) (rate(container_cpu_usage_seconds_total{cluster=\"devops-practice\",service=\"kubelet\",namespace=\"monitoring\",container!=\"\",container!=\"POD\"}[$__rate_interval]))",
+          "legendFormat": "{{container}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code",
+          "format": "time_series"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "calcs": []
+        }
+      },
+      "links": [
+        {
+          "title": "Открыть метрику в Explore",
+          "url": "http://localhost:3000/explore?schemaVersion=1&panes=%7B%22left%22%3A%7B%22datasource%22%3A%22victoriametrics%22%2C%22queries%22%3A%5B%7B%22refId%22%3A%22A%22%2C%22expr%22%3A%22sum%20by%20(container)%20(rate(container_cpu_usage_seconds_total%7Bcluster%3D%5C%22devops-practice%5C%22%2Cservice%3D%5C%22kubelet%5C%22%2Cnamespace%3D%5C%22monitoring%5C%22%2Ccontainer!%3D%5C%22%5C%22%2Ccontainer!%3D%5C%22POD%5C%22%7D%5B%24__rate_interval%5D))%22%7D%5D%2C%22range%22%3A%7B%22from%22%3A%22${__from}%22%2C%22to%22%3A%22${__to}%22%7D%7D%7D",
+          "targetBlank": true
+        }
+      ]
+    }
+  ]
+}

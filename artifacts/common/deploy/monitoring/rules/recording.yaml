@@ -1,0 +1,74 @@
+groups:
+  - name: devops-practice-recording
+    interval: 30s
+    rules:
+      - record: devops_practice:http_request_rate5m
+        expr: >-
+          sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m]))
+      - record: devops_practice:http_error_ratio5m
+        expr: >-
+          (sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",status_code=~"5.."}[5m])) or on (cluster, namespace, service, component) (0 * sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m])))) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m]))
+      - record: devops_practice:http_availability_ratio5m
+        expr: >-
+          1 - (sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",status_code=~"5.."}[5m])) or on (cluster, namespace, service, component) (0 * sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m])))) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m]))
+      - record: devops_practice:http_latency_ratio5m
+        expr: >-
+          sum by (cluster, namespace, service, component) (rate(devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",le="0.5"}[5m])) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_request_duration_seconds_count{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m]))
+      - record: devops_practice:http_request_rate30m
+        expr: >-
+          sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m]))
+      - record: devops_practice:http_error_ratio30m
+        expr: >-
+          (sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",status_code=~"5.."}[30m])) or on (cluster, namespace, service, component) (0 * sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m])))) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m]))
+      - record: devops_practice:http_availability_ratio30m
+        expr: >-
+          1 - (sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",status_code=~"5.."}[30m])) or on (cluster, namespace, service, component) (0 * sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m])))) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_requests_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m]))
+      - record: devops_practice:http_latency_ratio30m
+        expr: >-
+          sum by (cluster, namespace, service, component) (rate(devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*",le="0.5"}[30m])) / sum by (cluster, namespace, service, component) (rate(devops_practice_http_request_duration_seconds_count{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[30m]))
+      - record: devops_practice:http_latency_p50_seconds5m
+        expr: >-
+          histogram_quantile(0.5, sum by (cluster, namespace, service, component, le) (rate(devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m])))
+      - record: devops_practice:http_latency_p95_seconds5m
+        expr: >-
+          histogram_quantile(0.95, sum by (cluster, namespace, service, component, le) (rate(devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m])))
+      - record: devops_practice:http_latency_p99_seconds5m
+        expr: >-
+          histogram_quantile(0.99, sum by (cluster, namespace, service, component, le) (rate(devops_practice_http_request_duration_seconds_bucket{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api",route=~"/api/.*"}[5m])))
+      - record: devops_practice:events_published_rate5m
+        expr: >-
+          sum by (cluster, namespace, service, component, result) (rate(devops_practice_events_published_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="api"}[5m]))
+      - record: devops_practice:worker_records_rate5m
+        expr: >-
+          sum by (cluster, namespace, service, component, result) (rate(devops_practice_worker_records_total{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"}[5m]))
+      - record: devops_practice:worker_freshness_seconds
+        expr: >-
+          clamp_min(time() - max by (cluster, namespace, service, component) (devops_practice_worker_last_success_timestamp_seconds{cluster="devops-practice",namespace="devops-practice",service="devops-practice",component="worker"} > 0), 0)
+      - record: devops_practice:deployment_availability_ratio
+        expr: >-
+          max by (cluster, namespace, deployment) (kube_deployment_status_replicas_available{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"}) / (max by (cluster, namespace, deployment) (kube_deployment_spec_replicas{cluster="devops-practice",namespace="devops-practice",deployment=~"devops-practice-(api|worker)"}) > 0)
+        labels:
+          service: devops-practice
+  - name: postgresql-recording
+    interval: 30s
+    rules:
+      - record: postgresql:primary_count
+        expr: sum(patroni_primary{job="patroni"} and on (job, instance) (up{job="patroni"} == 1)) or vector(0)
+        labels: {cluster: devops-practice, namespace: platform}
+      - record: postgresql:member_count
+        expr: sum(patroni_postgres_running{job="patroni"} and on (job, instance) (up{job="patroni"} == 1)) or vector(0)
+        labels: {cluster: devops-practice, namespace: platform}
+      - record: postgresql:replica_lag_bytes
+        expr: >-
+          clamp_min(max by (cluster, namespace) (patroni_xlog_location{job="patroni"} and on (job, instance) (patroni_primary{job="patroni"} == 1) and on (job, instance) (up{job="patroni"} == 1)) - on (cluster, namespace) group_right () (patroni_xlog_replayed_location{job="patroni"} and on (job, instance) (patroni_replica{job="patroni"} == 1) and on (job, instance) (up{job="patroni"} == 1)), 0)
+      - record: postgresql:backup_age_seconds
+        expr: >-
+          time() - (max(kube_cronjob_status_last_successful_time{cluster="devops-practice",namespace="platform",cronjob="postgresql-backup"} > 0) or max(kube_cronjob_created{cluster="devops-practice",namespace="platform",cronjob="postgresql-backup"}))
+        labels: {cluster: devops-practice, namespace: platform}
+      - record: postgresql:backup_job_start_time
+        expr: >-
+          max by (cluster, namespace, job_name) (kube_job_created{cluster="devops-practice",namespace="platform"}) * on (cluster, namespace, job_name) group_left (owner_name) max by (cluster, namespace, job_name, owner_name) (kube_job_owner{cluster="devops-practice",namespace="platform",owner_kind="CronJob",owner_name="postgresql-backup"})
+      - record: postgresql:latest_backup_failed
+        expr: >-
+          sum((max by (cluster, namespace, job_name) (kube_job_status_failed{cluster="devops-practice",namespace="platform"}) > 0) and on (cluster, namespace, job_name) (postgresql:backup_job_start_time == on (cluster, namespace) group_left max by (cluster, namespace) (postgresql:backup_job_start_time))) or vector(0)
+        labels: {cluster: devops-practice, namespace: platform}

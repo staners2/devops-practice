@@ -1,0 +1,15 @@
+{{- if gt (int .Values.api.replicas) 1 }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "devops-practice.fullname" . }}-api
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+spec:
+  minAvailable: 1
+  unhealthyPodEvictionPolicy: AlwaysAllow
+  selector:
+    matchLabels:
+      {{- include "devops-practice.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+{{- end }}

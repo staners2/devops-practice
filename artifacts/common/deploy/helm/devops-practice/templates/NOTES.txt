@@ -1,0 +1,2 @@
+Application URL: http://{{ .Values.ingress.host }}:8080
+Health: /api/health-check

@@ -1,0 +1,225 @@
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: devops-practice
+
+scrape_configs:
+  - job_name: postgresql
+    static_configs:
+      - targets: [postgresql-exporter.monitoring.svc.cluster.local:9187]
+        labels:
+          namespace: platform
+          service: postgresql
+
+  - job_name: patroni
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [platform]
+        selectors:
+          - role: pod
+            label: app.kubernetes.io/name=postgresql-patroni
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: patroni-rest
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: drop
+        regex: Succeeded|Failed
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - target_label: service
+        replacement: postgresql
+
+  - job_name: application
+    kubernetes_sd_configs:
+      - role: pod
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        action: keep
+        regex: "true"
+      - source_labels: [__meta_kubernetes_pod_container_init]
+        action: drop
+        regex: "true"
+      - source_labels: [__meta_kubernetes_pod_phase]
+        action: drop
+        regex: Succeeded|Failed
+      - source_labels: [__meta_kubernetes_pod_container_port_name]
+        action: keep
+        regex: metrics
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port, __meta_kubernetes_pod_container_port_number]
+        action: keep_if_equal
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+        target_label: service
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app_kubernetes_io_instance]
+        regex: devops-practice;(.+)
+        target_label: service
+        replacement: $1
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+        target_label: component
+      - source_labels: [__meta_kubernetes_pod_controller_name]
+        target_label: workload
+      - source_labels: [workload]
+        regex: (.+)-[0-9a-f]{8,10}
+        target_label: workload
+        replacement: $1
+
+  - job_name: kube-state-metrics
+    honor_labels: true
+    static_configs:
+      - targets: [kube-state-metrics.monitoring.svc.cluster.local:8080]
+        labels:
+          service: kube-state-metrics
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: uid|container_id|image_id
+
+  - job_name: node-exporter
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [monitoring]
+        selectors:
+          - role: pod
+            label: app.kubernetes.io/name=prometheus-node-exporter
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: "9100"
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - target_label: service
+        replacement: node-exporter
+
+  - job_name: kubelet
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/$1/proxy/metrics
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: service
+        replacement: kubelet
+
+  - job_name: cadvisor
+    honor_timestamps: false
+    scheme: https
+    tls_config:
+      ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+    bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+    kubernetes_sd_configs:
+      - role: node
+    relabel_configs:
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: instance
+      - source_labels: [__meta_kubernetes_node_name]
+        target_label: node
+      - target_label: service
+        replacement: kubelet
+    metric_relabel_configs:
+      - action: labeldrop
+        regex: id|image|name|container_label_.+
+
+  - job_name: ingress-nginx
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [ingress-nginx]
+        selectors:
+          - role: pod
+            label: app.kubernetes.io/component=controller,app.kubernetes.io/name=ingress-nginx
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: "10254"
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - target_label: service
+        replacement: ingress-nginx
+
+  - job_name: argocd
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: [argocd]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: argocd-application-controller-metrics;http-metrics
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - target_label: service
+        replacement: argocd
+
+  - job_name: meta-monitoring
+    static_configs:
+      - targets:
+          - victoriametrics.monitoring.svc.cluster.local:8428
+          - vmagent.monitoring.svc.cluster.local:8429
+          - vmalert.monitoring.svc.cluster.local:8880
+          - alertmanager.monitoring.svc.cluster.local:9093
+          - grafana.monitoring.svc.cluster.local:80
+          - loki.monitoring.svc.cluster.local:3100
+        labels:
+          namespace: monitoring
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: ([^.]+)\..+
+        target_label: service
+        replacement: $1
+
+  - job_name: alloy
+    kubernetes_sd_configs:
+      - role: pod
+        namespaces:
+          names: [monitoring]
+        selectors:
+          - role: pod
+            label: app.kubernetes.io/name=alloy
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_container_port_number]
+        action: keep
+        regex: "12345"
+      - source_labels: [__meta_kubernetes_namespace]
+        target_label: namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+      - source_labels: [__meta_kubernetes_pod_node_name]
+        target_label: node
+      - target_label: service
+        replacement: alloy

@@ -1,0 +1,24 @@
+global:
+  resolve_timeout: 5m
+route:
+  receiver: telegram
+  group_by: [alertname, namespace, service]
+  group_wait: 30s
+  group_interval: 2m
+  repeat_interval: 1h
+inhibit_rules:
+  - source_matchers:
+      - 'severity="critical"'
+    target_matchers:
+      - 'severity="warning"'
+    equal: [service, namespace]
+receivers:
+  - name: telegram
+    telegram_configs:
+      - send_resolved: true
+        bot_token_file: /etc/alertmanager/telegram/bot_token
+        chat_id_file: /etc/alertmanager/telegram/chat_id
+        parse_mode: ''
+        message: '{{ template "devops-practice.telegram" . }}'
+templates:
+  - /etc/alertmanager/config/telegram.tmpl

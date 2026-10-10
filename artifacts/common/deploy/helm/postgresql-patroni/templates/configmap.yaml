@@ -1,0 +1,80 @@
+{{- include "postgresql-patroni.validate" . }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-patroni-local-config
+  labels:
+    {{- include "postgresql-patroni.labels" . | nindent 4 }}
+data:
+  patroni.yaml: |
+    scope: postgresql-patroni
+    kubernetes:
+      use_endpoints: false
+      bypass_api_service: false
+      scope_label: app.kubernetes.io/instance
+      role_label: role
+      leader_label_value: primary
+      follower_label_value: replica
+      labels:
+        app.kubernetes.io/name: postgresql-patroni
+        app.kubernetes.io/instance: postgresql-patroni
+    restapi:
+      listen: 0.0.0.0:8008
+      authentication:
+        username: patroni
+      allowlist: [127.0.0.1/32]
+      allowlist_include_members: true
+    bootstrap:
+      post_bootstrap: /opt/patroni/bin/python /opt/patroni/post-bootstrap.py
+      initdb:
+        - encoding: UTF8
+        - data-checksums
+      dcs:
+        ttl: {{ .Values.patroni.ttl }}
+        loop_wait: {{ .Values.patroni.loopWait }}
+        retry_timeout: {{ .Values.patroni.retryTimeout }}
+        maximum_lag_on_failover: {{ .Values.patroni.maximumLagOnFailover | int64 }}
+        check_timeline: true
+        synchronous_mode: false
+        synchronous_mode_strict: false
+        synchronous_node_count: 1
+        postgresql:
+          use_pg_rewind: true
+          parameters:
+            wal_level: replica
+            wal_log_hints: "on"
+            full_page_writes: "on"
+            shared_buffers: 64MB
+            work_mem: 4MB
+            max_connections: 100
+            max_wal_senders: 5
+            max_replication_slots: 5
+            max_slot_wal_keep_size: 256MB
+            synchronous_commit: "on"
+            password_encryption: scram-sha-256
+    postgresql:
+      listen: 0.0.0.0:5432
+      data_dir: /var/lib/postgresql/data/pgdata
+      bin_dir: /usr/lib/postgresql/18/bin
+      pgpass: /tmp/patroni.pgpass
+      use_pg_rewind: true
+      remove_data_directory_on_rewind_failure: false
+      remove_data_directory_on_diverged_timelines: false
+      authentication:
+        superuser:
+          username: postgres
+        replication:
+          username: replicator
+      pg_hba:
+        - local all all peer
+        - host all all 127.0.0.1/32 scram-sha-256
+        - host replication replicator 0.0.0.0/0 scram-sha-256
+        - host all all 0.0.0.0/0 scram-sha-256
+      parameters:
+        unix_socket_directories: /var/run/postgresql
+        logging_collector: "off"
+        log_statement: none
+        log_min_error_statement: panic
+        log_parameter_max_length_on_error: 0
+    watchdog:
+      mode: "off"

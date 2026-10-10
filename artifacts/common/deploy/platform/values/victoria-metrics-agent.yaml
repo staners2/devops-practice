@@ -1,0 +1,42 @@
+fullnameOverride: vmagent
+image:
+  tag: v1.153.0
+mode: deployment
+replicaCount: 1
+rbac:
+  create: false
+serviceAccount:
+  name: vmagent
+  automountToken: true
+# Create vmagent-scrape from the canonical deploy/monitoring/scrape/vmagent.yaml as key scrape.yml.
+configMap: vmagent-scrape
+remoteWrite:
+  - url: http://victoriametrics.monitoring.svc.cluster.local:8428/api/v1/write
+extraArgs:
+  memory.allowedPercent: 60
+  remoteWrite.maxDiskUsagePerURL: 256MiB
+  promscrape.configCheckInterval: 1m
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65534
+  runAsGroup: 65534
+  fsGroup: 65534
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
+service:
+  enabled: true
+  type: ClusterIP
+ingress:
+  enabled: false
+serviceMonitor:
+  enabled: false

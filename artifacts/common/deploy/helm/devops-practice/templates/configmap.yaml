@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "devops-practice.fullname" . }}
+  labels:
+    {{- include "devops-practice.labels" . | nindent 4 }}
+data:
+  HTTP_ADDR: ":8080"
+  METRICS_ADDR: ":9090"
+  REDIS_ADDR: {{ .Values.config.redisAddr | quote }}
+  REDIS_DB: {{ .Values.config.redisDB | quote }}
+  KAFKA_BROKERS: {{ .Values.config.kafkaBrokers | quote }}
+  KAFKA_TOPIC: {{ .Values.config.kafkaTopic | quote }}
+  KAFKA_GROUP: {{ .Values.config.kafkaGroup | quote }}
+  CACHE_TTL: {{ .Values.config.cacheTTL | quote }}
+  REQUEST_TIMEOUT: {{ .Values.config.requestTimeout | quote }}
+  SHUTDOWN_TIMEOUT: {{ .Values.config.shutdownTimeout | quote }}
+  PG_POOL_MAX_CONNS: {{ .Values.config.pgPoolMaxConns | quote }}
+  PG_POOL_MIN_CONNS: {{ .Values.config.pgPoolMinConns | quote }}
+  PG_STATEMENT_TIMEOUT: {{ .Values.config.pgStatementTimeout | quote }}
+  PG_LOCK_TIMEOUT: {{ .Values.config.pgLockTimeout | quote }}
+  PG_IDLE_IN_TRANSACTION_TIMEOUT: {{ .Values.config.pgIdleInTransactionTimeout | quote }}

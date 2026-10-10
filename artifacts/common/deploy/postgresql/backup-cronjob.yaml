@@ -1,0 +1,55 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgresql-backup
+  namespace: platform
+spec:
+  schedule: "0 */6 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 1800
+      backoffLimit: 1
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: postgresql-backup
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
+            fsGroup: 999
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: backup
+              image: postgres:18.6-bookworm@sha256:3725f4e2499eef5134592b3b4ab79a543ed7f8e533b05b5b637af926630f6650
+              command: ["/bin/sh", "/scripts/backup.sh"]
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              envFrom:
+                - secretRef: {name: postgresql-maintenance-auth}
+              env:
+                - {name: BACKUP_DIR, value: /backups}
+                - {name: BACKUP_KEEP, value: "3"}
+                - {name: PGCONNECT_TIMEOUT, value: "10"}
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {cpu: 500m, memory: 256Mi}
+              volumeMounts:
+                - {name: backups, mountPath: /backups}
+                - {name: scripts, mountPath: /scripts, readOnly: true}
+                - {name: temporary, mountPath: /tmp}
+          volumes:
+            - name: backups
+              persistentVolumeClaim: {claimName: postgresql-backups}
+            - name: scripts
+              configMap: {name: postgresql-maintenance-scripts}
+            - name: temporary
+              emptyDir: {}

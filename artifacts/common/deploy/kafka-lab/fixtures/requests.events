@@ -1,0 +1,9 @@
+req-001|{"request_id":"req-001","event":"request.created","sequence":1,"title":"Подготовить релиз"}
+req-002|{"request_id":"req-002","event":"request.created","sequence":1,"title":"Проверить резервную копию"}
+req-003|{"request_id":"req-003","event":"request.created","sequence":1,"title":"Настроить уведомления"}
+req-001|{"request_id":"req-001","event":"request.started","sequence":2}
+req-002|{"request_id":"req-002","event":"request.started","sequence":2}
+req-003|{"request_id":"req-003","event":"request.started","sequence":2}
+req-001|{"request_id":"req-001","event":"request.completed","sequence":3}
+req-002|{"request_id":"req-002","event":"request.completed","sequence":3}
+req-003|{"request_id":"req-003","event":"request.completed","sequence":3}

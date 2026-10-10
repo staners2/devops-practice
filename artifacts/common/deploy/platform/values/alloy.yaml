@@ -1,0 +1,63 @@
+fullnameOverride: alloy
+image:
+  tag: v1.20.0
+crds:
+  create: false
+controller:
+  type: daemonset
+  volumes:
+    extra:
+      - name: alloy-data
+        emptyDir: {}
+alloy:
+  # Create alloy-config from canonical deploy/monitoring/alloy/config.alloy as key config.alloy.
+  configMap:
+    create: false
+    name: alloy-config
+    key: config.alloy
+  storagePath: /var/lib/alloy
+  enableReporting: false
+  extraEnv:
+    - name: NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+  mounts:
+    extra:
+      - name: alloy-data
+        mountPath: /var/lib/alloy
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop: [ALL]
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+configReloader:
+  enabled: false
+rbac:
+  namespaces:
+    - devops-practice
+    - platform
+    - argocd
+    - ingress-nginx
+    - gitlab-runner
+    - monitoring
+  rules:
+    - apiGroups: [""]
+      resources: [pods]
+      verbs: [get, list, watch]
+    - apiGroups: [""]
+      resources: [pods/log]
+      verbs: [get]
+  clusterRules: []
+service:
+  type: ClusterIP

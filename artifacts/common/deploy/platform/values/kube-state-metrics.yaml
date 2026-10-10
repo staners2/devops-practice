@@ -1,0 +1,32 @@
+fullnameOverride: kube-state-metrics
+image:
+  tag: v2.20.0
+replicas: 1
+service:
+  type: ClusterIP
+collectors:
+  - cronjobs
+  - daemonsets
+  - deployments
+  - jobs
+  - namespaces
+  - nodes
+  - persistentvolumeclaims
+  - persistentvolumes
+  - pods
+  - replicasets
+  - services
+  - statefulsets
+  - storageclasses
+resources:
+  requests:
+    cpu: 25m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 128Mi
+prometheus:
+  monitor:
+    enabled: false
+  scrapeconfig:
+    enabled: false

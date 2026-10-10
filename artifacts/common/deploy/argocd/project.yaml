@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: devops-practice
+  namespace: argocd
+spec:
+  description: DevOps practice development environment
+  sourceRepos:
+    - __GITOPS_REPO_URL__
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: devops-practice
+  clusterResourceBlacklist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Service
+    - group: apps
+      kind: Deployment
+    - group: batch
+      kind: Job
+    - group: networking.k8s.io
+      kind: Ingress
+    - group: networking.k8s.io
+      kind: NetworkPolicy
+    - group: policy
+      kind: PodDisruptionBudget
+  orphanedResources:
+    warn: true

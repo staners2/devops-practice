@@ -1,0 +1,76 @@
+---
+- name: Подготовить Ubuntu учебного облака
+  hosts: all
+  become: true
+  vars: &lab_vars
+    lab_repo_root: "{{ playbook_dir }}/../../.."
+    lab_versions: "{{ dict(lookup('ansible.builtin.file', lab_repo_root + '/deploy/ansible-lab/versions.env').splitlines() | map('split', '=')) }}"
+  pre_tasks:
+    - name: Проверить ОС и архитектуру
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['distribution'] == 'Ubuntu'
+          - ansible_facts['distribution_version'] == '24.04'
+          - ansible_facts['architecture'] == 'x86_64'
+        fail_msg: Для облачных VM требуется Ubuntu 24.04 amd64.
+  roles:
+    - role: base
+
+- name: Подготовить локальные образы приложения
+  hosts: app
+  become: true
+  vars:
+    <<: *lab_vars
+    lab_source_dir: /opt/devops-practice-source-08
+    lab_source_url: "{{ lookup('ansible.builtin.env', 'LAB_REPO_URL') }}"
+    lab_source_ref: "{{ lookup('ansible.builtin.env', 'LAB_REPO_REF') }}"
+  pre_tasks:
+    - name: Проверить публичный HTTPS источник и полный commit SHA
+      ansible.builtin.assert:
+        that:
+          - lab_source_url is match('^https://gitlab.com/[a-zA-Z0-9_./-]+\.git$')
+          - lab_source_ref is match('^[0-9a-f]{40}$')
+        fail_msg: Укажите LAB_REPO_URL публичного проекта и LAB_REPO_REF полного commit.
+    - name: Прочитать commit control node
+      ansible.builtin.command:
+        argv: [git, -C, "{{ lab_repo_root }}", rev-parse, HEAD]
+      delegate_to: localhost
+      become: false
+      register: lab_control_revision
+      changed_when: false
+    - name: Проверить совпадение исходников control node и app
+      ansible.builtin.assert:
+        that: lab_control_revision.stdout == lab_source_ref
+  roles:
+    - role: docker
+  tasks:
+    - name: Установить Git на app
+      ansible.builtin.apt:
+        name: git
+        state: present
+    - name: Получить закреплённый commit публичного приложения
+      ansible.builtin.git:
+        repo: "{{ lab_source_url }}"
+        dest: "{{ lab_source_dir }}"
+        version: "{{ lab_source_ref }}"
+        force: false
+      register: lab_source
+    - name: Собрать готовые образы на app
+      ansible.builtin.command:
+        argv: [bash, "{{ lab_source_dir }}/scripts/ansible-lab/prepare-images.sh"]
+      changed_when: lab_source.changed
+      timeout: 1800
+
+- name: Настроить Nginx на входной VM
+  hosts: proxy
+  become: true
+  vars: *lab_vars
+  roles:
+    - role: nginx
+
+- name: Установить и проверить готовое приложение
+  hosts: app
+  become: true
+  vars: *lab_vars
+  roles:
+    - role: application

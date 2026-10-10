@@ -1,0 +1,74 @@
+fullnameOverride: grafana
+replicas: 1
+image:
+  tag: 13.2.3-distroless
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+rbac:
+  create: false
+serviceAccount:
+  automountServiceAccountToken: false
+service:
+  type: ClusterIP
+  port: 80
+ingress:
+  enabled: false
+persistence:
+  enabled: false
+initChownData:
+  enabled: false
+testFramework:
+  enabled: false
+resources:
+  requests:
+    cpu: 50m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: VictoriaMetrics
+        uid: victoriametrics
+        type: prometheus
+        access: proxy
+        url: http://victoriametrics.monitoring.svc.cluster.local:8428
+        isDefault: true
+        editable: false
+        jsonData:
+          timeInterval: 15s
+      - name: Loki
+        uid: loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc.cluster.local:3100
+        editable: false
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: devops-practice
+        orgId: 1
+        folder: DevOps practice
+        type: file
+        disableDeletion: false
+        allowUiUpdates: false
+        updateIntervalSeconds: 30
+        options:
+          path: /var/lib/grafana/dashboards/devops-practice
+# Create monitoring-dashboards from canonical deploy/monitoring/dashboards/*.json.
+dashboardsConfigMaps:
+  devops-practice: monitoring-dashboards
+grafana.ini:
+  analytics:
+    reporting_enabled: false
+    check_for_updates: false
+  metrics:
+    enabled: true
+  log:
+    mode: console
+    format: json
