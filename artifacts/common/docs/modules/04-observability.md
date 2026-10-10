@@ -1,3 +1,3 @@
 # Задание 04
 
-[Условие задания](../../../../tasks/04/README.md).
+[Условие задания](../../../../06-kubernetes/05-observability/README.md).

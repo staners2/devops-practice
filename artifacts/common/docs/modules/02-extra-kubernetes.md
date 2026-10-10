@@ -1,3 +1,3 @@
 # Задание 02-extra
 
-[Условие задания](../../../../tasks/02-extra/README.md).
+[Условие задания](../../../../06-kubernetes/03-network-storage-access/README.md).

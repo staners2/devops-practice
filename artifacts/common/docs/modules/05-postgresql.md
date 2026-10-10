@@ -1,3 +1,3 @@
 # Задание 05
 
-[Условие задания](../../../../tasks/05/README.md).
+[Условие задания](../../../../07-postgresql/02-backup-patroni/README.md).

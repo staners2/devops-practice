@@ -82,4 +82,4 @@ ServiceAccount задаёт идентичность workload. Role описыв
 
 Практика: дайте симптомы `Pending`, `CrashLoopBackOff`, `Running 0/1` и Service без endpoints. Менти должен выбрать команды и назвать гипотезы до изменения ресурсов.
 
-Пошаговые задания для менти: [CNI, Service и MetalLB, хранение данных, RBAC, NetworkPolicy и DaemonSet](../../tasks/02-extra/README.md).
+Пошаговые задания для менти: [CNI, Service и MetalLB, хранение данных, RBAC, NetworkPolicy и DaemonSet](../../06-kubernetes/03-network-storage-access/README.md).

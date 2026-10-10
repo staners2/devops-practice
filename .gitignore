@@ -41,3 +41,6 @@ reference/module-08-terraform/.ansible/
 /tasks/*/workspace/
 /artifacts/common/.env
 /artifacts/common/**/.env
+
+/*-*/*-*/workspace/
+/*-*/*-*/.init-*/
