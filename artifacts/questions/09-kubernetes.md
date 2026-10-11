@@ -5,34 +5,63 @@
 ## 1. Блок вопросов
 
 1. Что такое Kubernetes и чем он принципиально отличается от Docker Compose?
+
    **Ответ (пояснение):** Kubernetes — кластерный control plane, постоянно согласующий желаемое и фактическое состояние workloads. Compose в основном описывает запуск связанных контейнеров на одном Docker-окружении и не предоставляет такой модели контроллеров и кластера.
+
 2. Какие компоненты входят в control plane и worker node?
+
    **Ответ (пояснение):** Control plane включает API server, etcd, scheduler и controller manager. Worker обычно запускает kubelet, container runtime и сетевые компоненты; конкретная дистрибуция может упаковывать их иначе.
+
 3. Что такое controller loop и self-healing?
+
    **Ответ (пояснение):** Контроллер наблюдает фактическое состояние через API, сравнивает его с spec и повторно выполняет согласование. Self-healing — результат этого цикла: замена Pod или восстановление replicas, но не автоматическое исправление любой ошибки приложения.
+
 4. Как устроен manifest: `apiVersion`, `kind`, `metadata`, `spec`, `status`?
+
    **Ответ (пояснение):** `apiVersion` выбирает API, `kind` — тип ресурса, `metadata` — имя, namespace и метки, `spec` — желаемое состояние, `status` — наблюдаемое состояние, которое обычно обновляет контроллер.
+
 5. Как связаны labels, selectors и Service?
+
    **Ответ (пояснение):** Labels помечают объекты, selector выбирает набор по этим меткам. Service создаёт стабильную точку доступа и направляет трафик на Ready Pods, чьи labels соответствуют его selector.
+
 6. Почему Pod не равен контейнеру?
+
    **Ответ (пояснение):** Pod — минимальная единица планирования Kubernetes, содержащая один или несколько контейнеров с общей сетью, localhost, volumes и жизненным циклом. Контейнер — лишь один процессуальный runtime-компонент Pod.
+
 7. Зачем Deployment и ReplicaSet? Как работают rollout и rollback?
+
    **Ответ (пояснение):** Deployment управляет версиями Pod template и ReplicaSets, ReplicaSet поддерживает число реплик. Rollout постепенно переводит replicas на новый template, rollback создаёт новое согласование к ранее сохранённой revision.
+
 8. Когда нужны StatefulSet, DaemonSet, Job и CronJob?
+
    **Ответ (пояснение):** StatefulSet даёт стабильные идентичности и storage, DaemonSet запускает Pod на подходящих nodes, Job выполняет конечную работу до успеха, CronJob создаёт Jobs по расписанию.
+
 9. Чем ConfigMap отличается от Secret и почему Secret не полностью безопасен?
+
    **Ответ (пояснение):** ConfigMap хранит несекретную конфигурацию, Secret — чувствительные bytes и имеет отдельные механизмы доступа. Base64 не является шифрованием; безопасность требует RBAC, encryption at rest, ограничения выдачи и внешнего secret management при необходимости.
+
 10. Чем ClusterIP, NodePort и LoadBalancer отличаются?
+
     **Ответ (пояснение):** ClusterIP доступен внутри кластера, NodePort открывает порт на nodes, LoadBalancer запрашивает внешний балансировщик у поддерживаемой инфраструктуры. Все типы обычно используют Service selector и endpoints.
+
 11. Почему Ingress без Ingress Controller не работает?
+
     **Ответ (пояснение):** Ingress — декларативный объект правил, а не data plane. Controller должен наблюдать эти объекты и настраивать реальный proxy/load balancer; дополнительно важны IngressClass и поддерживаемые annotations.
+
 12. Чем readiness, liveness и startup probes отличаются?
+
     **Ответ (пояснение):** Readiness управляет включением Pod в трафик, liveness инициирует перезапуск зависшего контейнера, startup даёт медленному приложению время стартовать и до успеха подавляет остальные проверки.
+
 13. Чем requests отличаются от limits?
+
     **Ответ (пояснение):** Requests используются scheduler и гарантированным выделением ресурсов; limits ограничивают максимальное потребление. CPU сверх limit throttling, превышение memory limit может привести к OOM kill.
+
 14. Для чего нужны namespace, affinity, taints и tolerations?
+
     **Ответ (пояснение):** Namespace логически группирует namespaced resources, affinity влияет на размещение относительно nodes и Pods, taint отталкивает Pods от node, toleration разрешает планирование на node с соответствующим taint, но не гарантирует его.
+
 15. Как связаны ServiceAccount, Role и RoleBinding?
+
     **Ответ (пояснение):** ServiceAccount задаёт identity workload, Role перечисляет разрешённые действия внутри namespace, RoleBinding выдаёт эту Role субъекту. Для кластерной области применяют ClusterRole и ClusterRoleBinding.
 
 ## 2. Объяснение тем и вопросов
