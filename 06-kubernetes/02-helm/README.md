@@ -48,8 +48,20 @@ Runner с локального Docker executor в Kubernetes executor. Посл�
 2. Вручную скачай и установи отдельными Helm-релизами ingress-nginx,
    PostgreSQL, Redis, Kafka и GitLab Runner. Используй предоставленные
    values-файлы, не применяй operators и umbrella chart.
+
+### Чекпоинт: платформа подготовлена
+
+- [ ] **Результат:** Узлы и инфраструктурные Helm releases готовы, их Pod’ы и Service доступны для дальнейшей установки приложения.
+- [ ] **Понимание:** Могу объяснить разницу инфраструктурных releases и chart приложения.
+
 3. Полностью переведи pipeline на один GitLab Runner с Kubernetes executor и
    удали прежний container runner после успешной проверки нового.
+
+### Чекпоинт: runner перенесён
+
+- [ ] **Результат:** Проверочная job выполняется Kubernetes executor, видно namespace и выданные права.
+- [ ] **Понимание:** Могу объяснить границу RBAC и почему доступ runner не должен автоматически означать доступ ко всему кластеру.
+
 4. Добавь `/livez` для состояния процесса и `/readyz` для проверки
    PostgreSQL, Redis и Kafka. Существующий `/api/health-check` сохрани.
 5. Разработай Helm chart приложения с двумя replicas API и одной replica
@@ -57,14 +69,31 @@ Runner с локального Docker executor в Kubernetes executor. Посл�
    PodDisruptionBudget и NetworkPolicy.
 6. Выполняй миграцию PostgreSQL перед обновлением workloads, а smoke-проверку —
    после него. Ошибка любого hook должна блокировать release.
+
+### Чекпоинт: chart и hooks готовы
+
+- [ ] **Результат:** Chart рендерится; заданы probes и replicas, миграция и smoke описаны hooks с нужным порядком.
+- [ ] **Понимание:** Могу по отрендеренным ресурсам объяснить порядок установки, различие readiness/liveness и действия при ошибке миграции.
+
 7. Добавь проверки Helm chart в Merge Request pipeline.
 8. После merge в `main` публикуй образ с tag `$CI_COMMIT_SHA` и автоматически
    выполняй `helm upgrade --install` с `--atomic` и `--wait`.
 9. Создай GitLab environment `development` с URL
    `http://devops-practice.localhost:8080` и сохрани уведомление о deployment в
    существующем Telegram flow.
+
+### Чекпоинт: поставка проверена
+
+- [ ] **Результат:** MR-проверки проходят, main pipeline установил нужный SHA, API и полный поток доступны, deployment отражён в GitLab.
+- [ ] **Понимание:** Могу связать commit, образ, Helm revision и работающие Pod’ы.
+
 10. Воспроизведи отказ зависимости, неудачный rollout, ошибку миграции и
     блокировку трафика NetworkPolicy. Объясни диагностику и восстановление.
+
+### Чекпоинт: отказы локализованы
+
+- [ ] **Результат:** Для опытов из условия сохранены симптомы, наблюдения rollback и результаты восстановления.
+- [ ] **Понимание:** Могу объяснить, что отказало и почему откат не заменяется случайным удалением Pod.
 
 ## Ограничения
 

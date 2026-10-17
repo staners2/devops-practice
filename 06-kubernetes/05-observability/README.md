@@ -51,6 +51,12 @@ Telegram. Воспроизведите отказ зависимости и не
    worker по бизнесовому ID заявки. Не включайте payload, пароли, Cookie и
    Authorization в логи. Метрики используют шаблон маршрута, а не URL заявки.
    UUID, error text, title, offset и query string не могут быть metric labels.
+
+### Чекпоинт: сигналы приложения доступны
+
+- [ ] **Результат:** API и worker отдают метрики, тестовая заявка прослеживается по correlation ID в JSON-логах без секретов.
+- [ ] **Понимание:** Могу объяснить связь метрик и логов и почему request ID не стоит делать меткой метрик.
+
 3. В namespace `monitoring` установите отдельными upstream Helm charts:
    VictoriaMetrics Single, vmagent, vmalert с Alertmanager, Grafana, Loki
    monolithic, Alloy, kube-state-metrics и node-exporter. Закрепите версии.
@@ -63,6 +69,12 @@ Telegram. Воспроизведите отказ зависимости и не
 5. Добавьте metrics container ports и annotations в application chart.
    NetworkPolicy допускает scraping только из `monitoring`; пользовательский
    Ingress не открывает metrics. UI monitoring открываются через port-forward.
+
+### Чекпоинт: сбор метрик работает
+
+- [ ] **Результат:** Платформа установлена, scrape targets приложения видны; порт метрик изолирован от пользовательского Service.
+- [ ] **Понимание:** Могу отличить отсутствие трафика от недоступности target и показать источник конкретной метрики.
+
 6. VM и Loki сохраняют данные на PVC по 5Gi в `local-path`, retention — три
    дня, server replicas — одна. Alloy и node-exporter работают DaemonSet.
    Задайте requests/limits. Отключите лишние caches, MinIO и distributed mode.
@@ -76,10 +88,22 @@ Telegram. Воспроизведите отказ зависимости и не
    точный поиск request ID в JSON, события deployment/Argo CD и переход в Explore.
    Покажите RED, зависимости, публикацию/обработку событий, freshness,
    ресурсы/restarts/replicas, failed Jobs, ingress и состояние scrape targets.
+
+### Чекпоинт: данные доступны для расследования
+
+- [ ] **Результат:** Метрики и логи сохраняются, dashboards provisioned из Git; по ID нахожу записи API и worker.
+- [ ] **Понимание:** Могу выбрать dashboard или запрос для задержки API, остановки worker и ошибок зависимости.
+
 9. Определите SLI: availability API (не 5xx), доля запросов быстрее 500ms,
    worker freshness, deployment availability. Цели: 99% availability и 95%
    запросов быстрее 500ms. Используйте recording rules и окна 5m/30m.
    Отдельно объясните поведение SLI при отсутствии трафика.
+
+### Чекпоинт: SLI вычисляется осмысленно
+
+- [ ] **Результат:** Recording rules дают значения для заданных окон; поведение при отсутствии запросов проверено отдельно.
+- [ ] **Понимание:** Могу объяснить числитель, знаменатель, окно и цель каждого SLI.
+
 10. Настройте alerts и их unit tests. Проверьте inactive/pending/firing и
     annotations; отсутствие трафика не должно давать ложный WorkerStalled.
 
@@ -99,6 +123,11 @@ dashboard_url и runbook_url. Alertmanager группирует уведомле
 warning при critical того же сервиса и отправляет firing/resolved в Telegram.
 Токен/chat ID монтируются из Secret файлами; пароль Grafana также берётся из
 Secret. Delivery notifier GitLab остаётся отдельным каналом.
+
+### Чекпоинт: alerts проверены до инцидентов
+
+- [ ] **Результат:** Unit tests правил проходят, переходы inactive/pending/firing и доставка firing/resolved проверены.
+- [ ] **Понимание:** Могу объяснить for, группировку и разницу между проверкой правила и фактической доставкой уведомления.
 
 ## Два обязательных инцидента
 

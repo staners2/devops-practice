@@ -158,25 +158,30 @@ Cloud jobs запускаются только из проверенной prote
 непроверенного MR может раскрыть credential. Ручной apply не заменяет code review.
 Runner уже существует: третью VM/контейнер runner здесь не создавайте.
 
+### Чекпоинт: план и область доступа проверены
+
+- [ ] **Результат:** В конфигурации и плане определены lab folder, state, владелец и две VM; правила pipeline ограничивают apply проверенной веткой и saved plan.
+- [ ] **Понимание:** Могу объяснить, как подтвердить целевую среду и почему manual apply не заменяет review плана.
+
 ## Опыты и результат для сдачи
 
 Последовательность команд установки, восстановления, lock и удаления находится
 в [runbook](../../artifacts/common/docs/runbooks/08-terraform-bootstrap.md). Выполните все 12 опытов.
 
-| № | Опыт | Обязательное доказательство |
-| --- | --- | --- |
-| 1 | Первый bootstrap plan → manual apply | состав/стоимость, точный folder, две VM, app без public IP |
-| 2 | Готовый Ansible | ProxyJump, inventory, успешный health-check и заявка processed в PostgreSQL |
-| 3 | restricted | diff SG; новые внешние hostname/IPv4 соединения блокируются на обеих VM; SSH/DNS/smoke работают |
-| 4 | Маршрут vs firewall | bootstrap, отключён/возвращён NAT route; app теряет интернет, proxy продолжает работать |
-| 5 | Неверный source /32 | доступ не проходит; восстановление через cloud API новым корректным plan |
-| 6 | Drift label | ручная правка VM label, обнаружение plan, восстановление декларативного значения |
-| 7 | Import | пустая unattached SG только lab folder; описание в коде, import, пустой plan |
-| 8 | moved | новый адрес ресурса без destroy/create, адрес изменён в state |
-| 9 | for_each | перестановка map не заменяет VM; удаление одного из бесплатных demo SG не затрагивает другой |
-| 10 | Replacement proxy | bootstrap, `-replace` только proxy; новый host key, повторная установка, restricted; прежняя заявка читается |
-| 11 | State lock | ваш краткий demo lock мешает второй сессии получить lock; чужой lock не снимается |
-| 12 | Cleanup | просмотренный destroy plan, live inventory: нет VM/disks/IP/NAT, удалены demo SG и сеть |
+| № | Опыт | Обязательное доказательство | Самопроверка перед следующим опытом |
+| --- | --- | --- | --- |
+| 1 | Первый bootstrap plan → manual apply | состав/стоимость, точный folder, две VM, app без public IP | Какие объекты и в каком folder созданы? Почему app без public IP? |
+| 2 | Готовый Ansible | ProxyJump, inventory, успешный health-check и заявка processed в PostgreSQL | Через какие узлы проходит запрос и чем подтверждена запись в PostgreSQL? |
+| 3 | restricted | diff SG; новые внешние hostname/IPv4 соединения блокируются на обеих VM; SSH/DNS/smoke работают | Какие новые соединения запрещены и как проверены обе VM без потери SSH/DNS/smoke? |
+| 4 | Маршрут vs firewall | bootstrap, отключён/возвращён NAT route; app теряет интернет, proxy продолжает работать | Как наблюдения различают отсутствие NAT route и блокировку SG? |
+| 5 | Неверный source /32 | доступ не проходит; восстановление через cloud API новым корректным plan | Как восстановлен доступ через cloud API и почему повторный слепой apply не нужен? |
+| 6 | Drift label | ручная правка VM label, обнаружение plan, восстановление декларативного значения | Как plan обнаружил drift и какой источник задаёт желаемое значение? |
+| 7 | Import | пустая unattached SG только lab folder; описание в коде, import, пустой plan | Как подтверждено, что import не создал и не заменил существующую SG? |
+| 8 | moved | новый адрес ресурса без destroy/create, адрес изменён в state | Как доказано изменение адреса в state без удаления live-ресурса? |
+| 9 | for_each | перестановка map не заменяет VM; удаление одного из бесплатных demo SG не затрагивает другой | Почему перестановка ключей не заменяет VM и что ограничило удаление одним объектом? |
+| 10 | Replacement proxy | bootstrap, `-replace` только proxy; новый host key, повторная установка, restricted; прежняя заявка читается | Как подтверждены новый proxy, проверка его ключа и сохранность старой заявки? |
+| 11 | State lock | ваш краткий demo lock мешает второй сессии получить lock; чужой lock не снимается | Как проверена блокировка своего state и почему чужой lock не снимался? |
+| 12 | Cleanup | просмотренный destroy plan, live inventory: нет VM/disks/IP/NAT, удалены demo SG и сеть | Чем live inventory подтверждает отсутствие платных ресурсов, помимо успешного destroy? |
 
 Сначала положительный baseline внешнего доступа bootstrap, потом отрицательный
 restricted. Новый SSH и новый curl обязательны, существующий keep-alive не

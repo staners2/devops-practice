@@ -58,12 +58,30 @@ Argo CD, GitOps manifests, promotion Merge Request и read-only verification в
 4. Создай multi-source `Application`: Helm chart находится в
    `deploy/helm/devops-practice`, а значения development-окружения — в
    `deploy/environments/development/values.yaml` того же repository.
+
+### Чекпоинт: источники ограничены
+
+- [ ] **Результат:** Argo CD установлен, AppProject и Application указывают нужные repository, chart, values и destination; diff изучен.
+- [ ] **Понимание:** Могу объяснить desired state и границу разрешений AppProject.
+
 5. Первый sync выполни вручную после изучения `OutOfSync` diff. Затем включи
    automated sync с `prune`, `selfHeal` и `allowEmpty: false`.
+
+### Чекпоинт: синхронизация работает
+
+- [ ] **Результат:** Первый manual sync завершён; после перехода к automated sync записаны ожидаемые статусы и настройки.
+- [ ] **Понимание:** Могу объяснить OutOfSync, Synced и Healthy и не считаю их взаимозаменяемыми.
+
 6. Удали прямой `helm upgrade`, создание runtime Secret и другие изменения
    Kubernetes из GitLab pipeline.
 7. Ограничь Runner чтением workloads приложения и статуса одного Argo CD
    Application. Доступ к Secrets и mutating verbs запрещён.
+
+### Чекпоинт: CI лишён прямого deploy
+
+- [ ] **Результат:** В CI нет изменения workloads; положительные и отрицательные auth can-i подтверждают observer-права runner.
+- [ ] **Понимание:** Могу объяснить, кто теперь изменяет кластер и почему успешная сборка сама по себе ничего не развёртывает.
+
 8. После публикации image создавай служебную ветку и promotion Merge Request,
    изменяющий только image repository/tag development-окружения.
 9. Используй `CI_JOB_TOKEN` без постоянного personal/project access token.
@@ -71,10 +89,21 @@ Argo CD, GitOps manifests, promotion Merge Request и read-only verification в
 10. После merge promotion MR дождись reconciliation Argo CD, проверь
     `Synced/Healthy`, фактический image, rollout, smoke и Ingress. Только после
     этого создай GitLab deployment `development`.
+
+### Чекпоинт: promotion дошёл до приложения
+
+- [ ] **Результат:** До merge promotion MR версия не менялась; после merge проверены реальный image, готовность и GitLab deployment.
+- [ ] **Понимание:** Могу связать application MR, image SHA, promotion MR и результат reconciliation.
+
 11. Runtime Secret создай один раз вручную из интерактивно введённых значений.
     Не сохраняй его содержимое в Git, CI artifacts или logs.
 12. Воспроизведи drift, prune, несуществующий image, ошибку migration и
     rollback через Git revert.
+
+### Чекпоинт: восстановление следует Git
+
+- [ ] **Результат:** Bootstrap Secret не попал в Git; drift, prune и failed sync проверены, Git revert вернул рабочую версию.
+- [ ] **Понимание:** Могу объяснить отличие исправления desired state от разовой live-правки и границы self-heal.
 
 ## Разные подходы
 
