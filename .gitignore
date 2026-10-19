@@ -38,9 +38,12 @@ terraform/plan-manifest.json
 reference/module-08-terraform/plan-manifest.json
 reference/module-08-terraform/.ansible/
 
-/tasks/*/workspace/
-/artifacts/common/.env
-/artifacts/common/**/.env
 
-/*-*/*-*/workspace/
-/*-*/*-*/.init-*/
+
+/02-interviews-and-practice/*-*/*-*/workspace/
+/03-advanced/*-*/*-*/workspace/
+/02-interviews-and-practice/*-*/*-*/.init-*/
+/03-advanced/*-*/*-*/.init-*/
+/02-interviews-and-practice/artifacts/common/.env
+/02-interviews-and-practice/artifacts/common/**/.env
+__pycache__/

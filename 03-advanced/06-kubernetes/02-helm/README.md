@@ -1,0 +1,172 @@
+# Развернуть приложение в Kubernetes
+
+Уровень: **03 — дополнительные задачи, необязательно**. Начинай после соответствующей базовой практики второго уровня.
+
+Исторические номера внутри технических имён стендов сохраняются для совместимости.
+
+## Подготовка рабочей копии
+
+Из корня курса:
+
+```bash
+bash 02-interviews-and-practice/artifacts/init.sh 03 06 02
+cd 03-advanced/06-kubernetes/02-helm/workspace
+```
+
+Все команды задания выполняй из этого рабочего каталога.
+
+## Заявка от руководителя
+
+У нас есть Go-приложение, которое собирается и проверяется в GitLab CI,
+публикуется в GitLab Container Registry и локально работает вместе с
+PostgreSQL, Redis и Kafka. Следующий шаг — подготовить сервис к эксплуатации в
+Kubernetes.
+
+Разверни локальный Kubernetes-кластер, установи необходимые инфраструктурные
+компоненты и оформи приложение собственным Helm chart'ом. Перенеси GitLab
+Runner с локального Docker executor в Kubernetes executor. После merge в
+`main` новая версия должна автоматически устанавливаться в кластер, проходить
+миграцию базы и smoke-проверку.
+
+## Текущее состояние
+
+В качестве исходных материалов доступны:
+
+- Go API, worker, migrator и smoke-команда;
+- PostgreSQL, Redis и Kafka для локального запуска через Docker Compose;
+- endpoint `GET /api/health-check`;
+- GitLab Flow, проверки качества и безопасности;
+- rootless-сборка OCI-образа и публикация в GitLab Container Registry;
+- локальный container runner с Docker executor;
+- notifier, отправляющий события GitLab в Telegram.
+
+Готового Kubernetes-кластера, Helm chart приложения и deploy job нет.
+
+## Рабочая задача
+
+1. Создай локальный кластер `k3d`: один server и два agent nodes, без Traefik.
+2. Вручную скачай и установи отдельными Helm-релизами ingress-nginx,
+   PostgreSQL, Redis, Kafka и GitLab Runner. Используй предоставленные
+   values-файлы, не применяй operators и umbrella chart.
+
+### Чекпоинт: платформа подготовлена
+
+- [ ] **Результат:** Узлы и инфраструктурные Helm releases готовы, их Pod’ы и Service доступны для дальнейшей установки приложения.
+- [ ] **Понимание:** Могу объяснить разницу инфраструктурных releases и chart приложения.
+
+3. Полностью переведи pipeline на один GitLab Runner с Kubernetes executor и
+   удали прежний container runner после успешной проверки нового.
+
+### Чекпоинт: runner перенесён
+
+- [ ] **Результат:** Проверочная job выполняется Kubernetes executor, видно namespace и выданные права.
+- [ ] **Понимание:** Могу объяснить границу RBAC и почему доступ runner не должен автоматически означать доступ ко всему кластеру.
+
+4. Добавь `/livez` для состояния процесса и `/readyz` для проверки
+   PostgreSQL, Redis и Kafka. Существующий `/api/health-check` сохрани.
+5. Разработай Helm chart приложения с двумя replicas API и одной replica
+   worker, probes, ресурсными ограничениями, безопасным security context,
+   PodDisruptionBudget и NetworkPolicy.
+6. Выполняй миграцию PostgreSQL перед обновлением workloads, а smoke-проверку —
+   после него. Ошибка любого hook должна блокировать release.
+
+### Чекпоинт: chart и hooks готовы
+
+- [ ] **Результат:** Chart рендерится; заданы probes и replicas, миграция и smoke описаны hooks с нужным порядком.
+- [ ] **Понимание:** Могу по отрендеренным ресурсам объяснить порядок установки, различие readiness/liveness и действия при ошибке миграции.
+
+7. Добавь проверки Helm chart в Merge Request pipeline.
+8. После merge в `main` публикуй образ с tag `$CI_COMMIT_SHA` и автоматически
+   выполняй `helm upgrade --install` с `--atomic` и `--wait`.
+9. Создай GitLab environment `development` с URL
+   `http://devops-practice.localhost:8080` и сохрани уведомление о deployment в
+   существующем Telegram flow.
+
+### Чекпоинт: поставка проверена
+
+- [ ] **Результат:** MR-проверки проходят, main pipeline установил нужный SHA, API и полный поток доступны, deployment отражён в GitLab.
+- [ ] **Понимание:** Могу связать commit, образ, Helm revision и работающие Pod’ы.
+
+10. Воспроизведи отказ зависимости, неудачный rollout, ошибку миграции и
+    блокировку трафика NetworkPolicy. Объясни диагностику и восстановление.
+
+### Чекпоинт: отказы локализованы
+
+- [ ] **Результат:** Для опытов из условия сохранены симптомы, наблюдения rollback и результаты восстановления.
+- [ ] **Понимание:** Могу объяснить, что отказало и почему откат не заменяется случайным удалением Pod.
+
+## Ограничения
+
+- один обязательный уровень сложности Hard;
+- только локальные ресурсы и публичный GitLab.com Free, затраты 0 ₽;
+- компьютер с 16 ГБ RAM: до 8 ГБ в покое и до 10 ГБ с одной CI job;
+- одновременно выполняется только одна CI job;
+- Kubernetes устанавливается через `k3d`; production-кластер в этот модуль не
+  входит;
+- инфраструктурные приложения устанавливаются готовыми Helm charts вручную;
+- приложение устанавливается собственным chart только через pipeline;
+- запрещены Kubernetes operators, CRD, DinD, privileged mode и Docker socket
+  внутри jobs;
+- приложение публикуется только с неизменяемым tag commit SHA; `latest`
+  запрещён;
+- credentials, runner token, kubeconfig и локальные конфигурации не попадают в
+  Git, 02-interviews-and-practice/artifacts и job logs;
+- один Runner выполняет MR и deploy jobs. Это сознательное упрощение локальной
+  практики: его доступ ограничивается namespace приложения, а риск выполнения
+  недоверенного MR-кода необходимо описать;
+- TLS, cert-manager, Argo CD, autoscaling, observability, backup, HA stateful
+  services и Yandex Cloud не входят в модуль;
+- ingress-nginx применяется только для упрощённой локальной практики. Проект
+  завершил поддержку в марте 2026 года и не подходит как новая
+  production-рекомендация; для production рассмотри поддерживаемую реализацию
+  Gateway API.
+
+## Что предоставить на ревью
+
+- ссылку на Merge Request и успешный MR pipeline;
+- ссылку на успешный main pipeline;
+- ссылку на GitLab deployment и environment;
+- Helm chart приложения и values-файлы инфраструктуры;
+- вывод migration и smoke hooks;
+- `helm history` и доказательство atomic rollback;
+- команды и результаты проверки probes, двух replicas и NetworkPolicy;
+- runbook установки локальной платформы;
+- runbook переноса GitLab Runner;
+- краткий разбор отказа: симптом, причина, диагностика и восстановление;
+- подтверждение удаления прежнего container runner без потери notifier state.
+
+Проверки выполняй в порядке из
+[`kubernetes-platform.md`](../../../02-interviews-and-practice/artifacts/common/docs/runbooks/kubernetes-platform.md): сначала чистая
+установка и happy path, затем удаление API pod, отказ PostgreSQL, неуспешный
+upgrade, ошибка migration и NetworkPolicy. Для каждого эксперимента приложи
+команду, наблюдаемый результат и команду восстановления. Не используй
+скриншот `Running` как единственное доказательство: он не подтверждает полный
+поток данных или корректность отказоустойчивости.
+
+Установка и перенос runner описаны в
+[`gitlab-runner-kubernetes.md`](../../../02-interviews-and-practice/artifacts/common/docs/runbooks/gitlab-runner-kubernetes.md). В
+отчёте отдельно покажи, что MR и deploy jobs запущены Kubernetes executor, а
+старый container runner удалён только после успешного main pipeline.
+
+## Критерии приёмки
+
+1. MR pipeline проверяет Go-код, OCI-образ и Helm chart.
+2. Main pipeline публикует неизменяемый image tag и автоматически выполняет
+   deploy.
+3. Migration Job успешно завершается до обновления workloads.
+4. API доступен через `http://devops-practice.localhost:8080`.
+5. Основной поток проходит через PostgreSQL, Kafka, worker и Redis.
+6. Удаление одного API pod не делает Service недоступным.
+7. Падение PostgreSQL меняет readiness, но не liveness.
+8. Неверный image tag не заменяет предыдущую рабочую версию.
+9. Ошибка миграции блокирует release.
+10. NetworkPolicy блокирует неразрешённый pod.
+11. `helm history` содержит проверяемую историю релиза и rollback.
+12. GitLab содержит deployment и environment `development`.
+13. Telegram получает одно уведомление об успешном deploy.
+14. Старый Docker/container runner отсутствует в GitLab, Compose и локальных
+    volumes.
+15. Charts, runtime images и CI images закреплены версиями; инфраструктурные
+    images закреплены digest.
+16. Стенд соблюдает ограничение памяти и выполняет только одну CI job
+    одновременно.

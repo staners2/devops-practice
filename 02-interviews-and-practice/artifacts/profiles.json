@@ -1,0 +1,23 @@
+{
+  "03-advanced/03-docker/02-application": "00",
+  "03-advanced/04-ci-cd/02-gitlab-delivery": "01",
+  "03-advanced/06-kubernetes/02-helm": "02",
+  "03-advanced/06-kubernetes/03-network-storage-access": "02-extra",
+  "03-advanced/06-kubernetes/04-gitops": "03",
+  "03-advanced/06-kubernetes/05-observability": "04",
+  "03-advanced/07-postgresql/02-backup-patroni": "05",
+  "03-advanced/09-kafka/02-consumer-groups": "06",
+  "03-advanced/05-ansible/02-two-servers": "07",
+  "03-advanced/10-terraform/02-yandex-cloud": "08",
+  "03-advanced/01-linux-networks/02-incidents": "09",
+  "02-interviews-and-practice/01-linux-networks/01-basic": "basic",
+  "02-interviews-and-practice/02-git/01-basic": "basic",
+  "02-interviews-and-practice/03-docker/01-basic": "basic",
+  "02-interviews-and-practice/04-ci-cd/01-basic": "basic",
+  "02-interviews-and-practice/05-ansible/01-basic": "basic",
+  "02-interviews-and-practice/06-kubernetes/01-basic": "basic",
+  "02-interviews-and-practice/07-postgresql/01-basic": "basic",
+  "02-interviews-and-practice/08-redis/01-basic": "basic",
+  "02-interviews-and-practice/09-kafka/01-basic": "06",
+  "02-interviews-and-practice/10-terraform/01-basic": "basic"
+}
